@@ -15,5 +15,5 @@ Route::get('/heroes', [HeroController::class, 'index'])->name('heroes.index');
 //lo que facilita su referencia en otras partes de la aplicación, como en las vistas o en redirecciones.
 
 // Definimos una ruta para mostrar los detalles de un héroe específico,
-//utilizando el método show del HeroController y pasando el id del héroe como parámetro.
+//utilizando el método show del HeroController y pasando el id del héroe como pará metro.
 Route::get('/heroes/{id}', [HeroController::class, 'show'])->name('heroes.show');
