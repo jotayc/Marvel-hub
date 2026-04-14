@@ -1861,4 +1861,4 @@ public function index()
 - ✅ Escalable a millones de registros
 - ✅ Múltiples usuarios pueden modificar datos
 
-**¡Felicidades!** Has completado el ejercicio de Query Builder. Ahora comprendes cómo Laravel interactúa con bases de datos reales y cómo reemplazar datos estáticos por dinámicos.
+
