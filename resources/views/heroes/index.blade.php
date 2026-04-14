@@ -56,10 +56,10 @@
 
     <div class="heroes-grid">
         @foreach($heroes as $hero)
-            <a href="/heroes/{{ $hero['id'] }}" class="hero-card">
-                <div class="hero-name">{{ $hero['name'] }}</div>
-                <div class="hero-real-name">{{ $hero['real_name'] }}</div>
-                <div class="hero-power">{{ $hero['power'] }}</div>
+            <a href="{{route('heroes.show', $hero->id)}}" class="hero-card">
+                <div class="hero-name">{{ $hero->name }}</div>
+                <div class="hero-real-name">{{ $hero->real_name }}</div>
+                <div class="hero-power">{{ $hero->power }}</div>
             </a>
         @endforeach
     </div>

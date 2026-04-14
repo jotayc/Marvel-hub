@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $hero['name'] }} - Marvel Hub</title>
+    <title>{{ $hero->name }} - Marvel Hub</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -44,30 +44,30 @@
 </head>
 <body>
     <div class="hero-detail">
-        <h1>{{ $hero['name'] }}</h1>
+        <h1>{{ $hero->name }}</h1>
 
         <div class="info-row">
             <span class="label">Nombre real:</span>
-            {{ $hero['real_name'] }}
+            {{ $hero->real_name }}
         </div>
 
         <div class="info-row">
             <span class="label">Poder:</span>
-            {{ $hero['power'] }}
+            {{ $hero->power }}
         </div>
 
         <div class="info-row">
             <span class="label">Nivel de poder:</span>
-            {{ $hero['power_level'] }}
+            {{ $hero->power_level }}
         </div>
 
         <div class="info-row">
             <span class="label">Equipo:</span>
-            {{ $hero['team'] }}
+            {{ $hero->team }}
         </div>
 
-        <a href="/heroes" class="back-link">← Volver al listado</a>
-        <! -- Podemos usar  -- >
+        <a href="{{ route('heroes.index') }}" class="back-link">← Volver al listado</a>
+
     </div>
 </body>
 </html>

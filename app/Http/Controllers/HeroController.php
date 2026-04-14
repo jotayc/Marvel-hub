@@ -1,27 +1,16 @@
 <?php
-//Con el comando php artisan make:controller HeroController se crea este controlador, el cual se encuentra en la carpeta app/Http/Controllers,
-//y se puede utilizar para manejar las rutas relacionadas con los heroes.
+
 
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+// Importamos la clase DB para realizar consultas a la base de datos
+use Illuminate\Support\Facades\DB;
 
 class HeroController extends Controller
 {
 
-    public function getAllHeroes()
-    {
-        $heroes = [
-             ['id' => 0, 'name' => 'Iron Man', 'real_name' => 'Tony Stark', 'power' => 'Tecnología avanzada', 'power_level' => 8500, 'team' => 'Vengadores'],
-             ['id' => 1, 'name' => 'Thor', 'real_name' => 'Thor Odinson', 'power' => 'Dios del Trueno', 'power_level' => 9000, 'team' => 'Vengadores'],
-             ['id' => 2, 'name' => 'Spider-Man', 'real_name' => 'Peter Parker', 'power' => 'Sentido arácnido', 'power_level' => 7000, 'team' => 'Vengadores'],
-             ['id' => 3, 'name' => 'Doctor Strange', 'real_name' => 'Stephen Strange', 'power' => 'Hechicería', 'power_level' => 9000, 'team' => 'Vengadores'],
-             ['id' => 4, 'name' => 'Black Widow', 'real_name' => 'Natasha Romanoff', 'power' => 'Espía experta', 'power_level' => 6500, 'team' => 'Vengadores'],
-        ];
-
-        return $heroes;
-
-    }
+    /* *** ELIMINAMOS EL MÉTODO getAllHeroes ***
 
     /*
     Cada método tiene un nombre establecido, como index, show, create, store, edit, update y destroy,
@@ -31,8 +20,9 @@ class HeroController extends Controller
 
     */
     public function index()
-    {
-        $heroes = $this->getAllHeroes();
+
+    {   // Obtenemos todos los héroes de la base de datos
+        $heroes = DB::table('heroes')->get();
 
         return view('heroes.index', ['heroes' => $heroes]);
     }
@@ -41,14 +31,22 @@ class HeroController extends Controller
     //en este caso se recibe el id del héroe como parámetro,
     public function show($id)
     {
-        $heroes = $this->getAllHeroes();
 
+        ///-- OPCION 1 -- ///
 
-        if (!isset($heroes[$id])) {
+        //DB::table('heroes') hace referencia a la tabla 'heroes' en la base de datos
+        // where() se utiliza para filtrar los resultados por el campo 'id' igual al valor de $id
+        // El método first() devuelve el primer resultado que coincide con la condición, o null si no se encuentra ningún resultado.
+        $hero = DB::table('heroes')->where('id', $id)->first();
+
+       ///-- OPCION 2 -- ///
+       // El método find() se utiliza para buscar un registro por su clave primaria
+       //(en este caso, el campo 'id').
+       // $hero = DB::table('heroes')->find($id);
+
+        if (!$hero) {
             abort(404, 'Héroe no encontrado');
         }
-
-        $hero = $heroes[$id]; // Ajustamos el índice para que coincida con el array (que comienza en 0)
 
         return view('heroes.show', ['hero' => $hero]);
     }

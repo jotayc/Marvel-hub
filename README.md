@@ -893,972 +893,363 @@ use Illuminate\Support\Facades\DB;
 
 ## Ejercicio Práctico: Tienda de Productos
 
-Ahora que dominas Query Builder, es momento de practicar creando un catálogo de productos que lee datos de la base de datos.
+Ahora que dominas Query Builder, es momento de poner en práctica todo lo aprendido creando un sistema completo desde cero.
 
-### Objetivo
+---
 
-Crear una tienda de productos que:
-1. Muestre todos los productos desde la base de datos
-2. Permita ver detalle de cada producto
-3. Filtre productos por categoría
-4. Muestre productos ordenados por precio
-5. Use Query Builder para todas las consultas
+## 🎯 ENUNCIADO DEL PROBLEMA
 
-### Paso 1: Crear la Base de Datos
+Debes crear un catálogo de productos para una tienda online que permita:
 
-Abre **phpMyAdmin** (http://localhost/phpMyAdmin) y ejecuta este SQL:
+1. **Listar todos los productos** con información básica
+2. **Ver detalle completo** de cada producto
+3. **Filtrar productos destacados** (los más recomendados)
+4. **Filtrar productos económicos** (menores a 100€)
+5. **Filtrar por categoría** (Informática, Audio, etc.)
 
-```sql
--- Crear base de datos
-CREATE DATABASE tienda CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+El sistema debe usar **Query Builder** (`DB::table()`) para todas las consultas a la base de datos.
 
--- Usar la base de datos
-USE tienda;
+---
 
--- Crear tabla productos
-CREATE TABLE productos (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    nombre VARCHAR(150) NOT NULL,
-    descripcion TEXT,
-    precio DECIMAL(10,2) NOT NULL,
-    stock INT NOT NULL DEFAULT 0,
-    categoria VARCHAR(50) NOT NULL,
-    marca VARCHAR(50),
-    destacado TINYINT(1) DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+## 📋 REQUISITOS TÉCNICOS
 
--- Insertar productos de ejemplo
-INSERT INTO productos (nombre, descripcion, precio, stock, categoria, marca, destacado) VALUES
-('Laptop Dell XPS 13', 'Portátil ultraligero de 13 pulgadas con procesador Intel i7', 1299.99, 15, 'Informática', 'Dell', 1),
-('iPhone 15 Pro', 'Smartphone de última generación con cámara de 48MP', 1199.00, 25, 'Móviles', 'Apple', 1),
-('Auriculares Sony WH-1000XM5', 'Auriculares inalámbricos con cancelación de ruido', 349.99, 40, 'Audio', 'Sony', 0),
-('Teclado Mecánico Logitech', 'Teclado gaming con switches mecánicos RGB', 129.99, 30, 'Periféricos', 'Logitech', 0),
-('Monitor Samsung 27"', 'Monitor 4K de 27 pulgadas con HDR', 449.00, 20, 'Informática', 'Samsung', 1),
-('Mouse Logitech MX Master 3', 'Ratón ergonómico inalámbrico para productividad', 99.99, 50, 'Periféricos', 'Logitech', 0),
-('Tablet iPad Air', 'Tablet de 10.9 pulgadas con chip M1', 699.00, 18, 'Tablets', 'Apple', 1),
-('Webcam Logitech C920', 'Cámara web Full HD 1080p', 79.99, 35, 'Periféricos', 'Logitech', 0),
-('Disco SSD Samsung 1TB', 'Unidad de estado sólido NVMe de alta velocidad', 89.99, 60, 'Almacenamiento', 'Samsung', 0),
-('Altavoz Bluetooth JBL', 'Altavoz portátil resistente al agua', 129.00, 45, 'Audio', 'JBL', 0);
-```
+### Base de Datos
 
-**Verifica los datos:**
+**Nombre:** `tienda`
+**Tabla:** `productos`
 
-En phpMyAdmin, selecciona la base `tienda` → tabla `productos` → pestaña "Examinar".
+**Estructura de la tabla:**
 
-Deberías ver 10 productos.
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `id` | INT | Identificador único |
+| `nombre` | VARCHAR(150) | Nombre del producto |
+| `descripcion` | TEXT | Descripción del producto |
+| `precio` | DECIMAL(10,2) | Precio en euros |
+| `stock` | INT | Unidades disponibles |
+| `categoria` | VARCHAR(50) | Categoría (Informática, Audio, etc.) |
+| `marca` | VARCHAR(50) | Marca del producto |
+| `destacado` | TINYINT(1) | 1 = destacado, 0 = normal |
+| `created_at` | TIMESTAMP | Fecha de creación |
+| `updated_at` | TIMESTAMP | Fecha de actualización |
 
-### Paso 2: Crear Proyecto de Práctica (Opcional)
+**Datos mínimos:** 10 productos de ejemplo con diferentes categorías y precios.
 
-Puedes crear un proyecto separado o usar el mismo `marvel-hub`. Si quieres practicar aisladamente:
+### Controlador
 
-```bash
-cd C:\MAMP\htdocs
-composer create-project laravel/laravel tienda-productos
-cd tienda-productos
-```
+**Nombre:** `ProductoController`
 
-Si usas `marvel-hub`, simplemente añade las rutas y controlador nuevos.
+**Métodos requeridos:**
 
-### Paso 3: Configurar Conexión a la BD
+1. `index()` - Listar todos los productos ordenados por nombre
+2. `show($id)` - Mostrar detalle de un producto específico
+3. `destacados()` - Listar solo productos destacados
+4. `economicos()` - Listar productos con precio < 100€
+5. `porCategoria($categoria)` - Listar productos de una categoría
 
-Edita `.env` y añade configuración para la base `tienda`:
+### Rutas
 
-**Opción A: Proyecto separado**
+**Rutas necesarias:**
+
+- `/productos` → listado completo
+- `/productos/destacados` → solo destacados
+- `/productos/economicos` → solo económicos
+- `/productos/categoria/{categoria}` → filtrado por categoría
+- `/productos/{id}` → detalle de producto
+
+**⚠️ Importante:** El orden de las rutas importa para evitar conflictos.
+
+### Vistas
+
+**Carpeta:** `resources/views/productos/`
+
+**Archivos necesarios:**
+
+1. `index.blade.php` - Listado general
+2. `show.blade.php` - Detalle del producto
+3. `destacados.blade.php` - Productos destacados
+4. `economicos.blade.php` - Productos económicos
+5. `categoria.blade.php` - Productos por categoría
+
+---
+
+## ✏️ TAREAS A REALIZAR
+
+### Tarea 1: Preparar la Base de Datos
+
+**1.1** Abre phpMyAdmin y crea la base de datos `tienda` con collation `utf8mb4_unicode_ci`
+
+**1.2** Crea la tabla `productos` con todos los campos especificados arriba
+
+**1.3** Inserta al menos 10 productos de ejemplo:
+- Mínimo 3 productos destacados
+- Mínimo 3 productos económicos (< 100€)
+- Al menos 3 categorías diferentes (Informática, Audio, Periféricos, etc.)
+- Variedad de precios, marcas y stock
+
+**1.4** Verifica los datos ejecutando: `SELECT * FROM productos;`
+
+### Tarea 2: Configurar Conexión
+
+**2.1** Si usas un proyecto separado, edita `.env` con los datos de conexión a la BD `tienda`
+
+**2.2** Si usas el proyecto `marvel-hub`, puedes cambiar temporalmente la BD en `.env`
+
+**2.3** No olvides añadir las líneas de collation:
 ```env
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=tienda
-DB_USERNAME=root
-DB_PASSWORD=root
 DB_COLLATION=utf8mb4_unicode_ci
 DB_CHARSET=utf8mb4
 ```
 
-**Opción B: Mismo proyecto marvel-hub**
+**2.4** Limpia la caché de configuración
 
-Si usas el mismo proyecto, puedes trabajar con ambas BD o cambiar temporalmente a `tienda` en `.env`.
+### Tarea 3: Probar con Tinker
 
-**Limpiar caché:**
+Antes de escribir código, verifica que la conexión funciona:
 
-```bash
-php artisan config:clear
-```
+**3.1** Abre Tinker
 
-### Paso 4: Probar Conexión con Tinker
+**3.2** Ejecuta estas consultas de prueba:
+- Contar todos los productos
+- Obtener el primer producto
+- Listar productos destacados
+- Listar productos con precio < 100
+- Listar productos de una categoría específica
 
-```bash
-php artisan tinker
-```
+**3.3** Si alguna consulta falla, revisa la configuración antes de continuar
 
-Dentro de Tinker:
+### Tarea 4: Crear el Controlador
+
+**4.1** Usa Artisan para generar `ProductoController`
+
+**4.2** Importa la facade `DB` en el controlador
+
+**4.3** Implementa el método `index()`:
+- Obtener todos los productos
+- Ordenarlos alfabéticamente por nombre
+- Pasar los datos a la vista `productos.index`
+
+**4.4** Implementa el método `show($id)`:
+- Buscar el producto por ID
+- Si no existe, lanzar error 404
+- Pasar el producto a la vista `productos.show`
+
+**4.5** Implementa el método `destacados()`:
+- Filtrar productos donde `destacado = 1`
+- Ordenar por precio descendente
+- Pasar a la vista `productos.destacados`
+
+**4.6** Implementa el método `economicos()`:
+- Filtrar productos con precio menor a 100
+- Ordenar por precio ascendente
+- Pasar a la vista `productos.economicos`
+
+**4.7** Implementa el método `porCategoria($categoria)`:
+- Filtrar productos de esa categoría
+- Ordenar por precio ascendente
+- Pasar productos, categoría y total a la vista
+
+### Tarea 5: Crear las Rutas
+
+**5.1** Abre `routes/web.php`
+
+**5.2** Importa el `ProductoController`
+
+**5.3** Define las 5 rutas necesarias con nombres (usa `->name()`)
+
+**5.4** Recuerda: las rutas específicas deben ir ANTES de las rutas con parámetros
+
+### Tarea 6: Crear las Vistas
+
+**6.1** Crea la carpeta `resources/views/productos/`
+
+**6.2** Crea `index.blade.php`:
+- Mostrar título y contador de productos
+- Botones de filtro (Todos, Destacados, Económicos, categorías)
+- Grid de tarjetas con: nombre, marca, género, precio, stock
+- Badge si es destacado
+- Cada tarjeta debe ser un enlace al detalle
+- Diseño atractivo con CSS
+
+**6.3** Crea `show.blade.php`:
+- Mostrar toda la información del producto
+- Precio destacado visualmente
+- Grid con: categoría, stock, código, fecha de registro
+- Sinopsis o descripción
+- Enlace para volver al catálogo
+
+**6.4** Crea `destacados.blade.php`:
+- Similar a index pero con diseño especial para destacados
+- Mostrar contador de productos destacados
+- Color/diseño diferente al listado normal
+
+**6.5** Crea `economicos.blade.php`:
+- Similar a index pero con diseño orientado a ofertas
+- Mostrar "productos por menos de 100€"
+- Énfasis visual en el precio
+
+**6.6** Crea `categoria.blade.php`:
+- Mostrar el nombre de la categoría
+- Contador de productos en esa categoría
+- Listado de productos
+- Manejo de categorías vacías con `@forelse`
+
+### Tarea 7: Probar el Sistema
+
+**7.1** Inicia el servidor con Artisan
+
+**7.2** Verifica cada ruta en el navegador:
+- `/productos` - ¿Se ven todos los productos?
+- `/productos/destacados` - ¿Solo muestra destacados?
+- `/productos/economicos` - ¿Solo productos < 100€?
+- `/productos/categoria/Audio` - ¿Filtra correctamente?
+- `/productos/1` - ¿Muestra el detalle?
+- `/productos/999` - ¿Muestra error 404?
+
+**7.3** Verifica las rutas definidas con: `php artisan route:list --name=productos`
+
+**7.4** Comprueba que todos los enlaces funcionan (especialmente los botones de filtro)
+
+---
+
+## 💡 PISTAS Y RECORDATORIOS
+
+### Sobre Query Builder
 
 ```php
-// Probar conexión
-DB::connection()->getPdo();
-
-// Contar productos
-DB::table('productos')->count();
-// Debería mostrar: 10
-
-// Ver primer producto
-DB::table('productos')->first();
-
-// Productos destacados
-DB::table('productos')->where('destacado', 1)->get();
-
-// Salir
-exit
+// Estructura básica
+DB::table('nombre_tabla')
+    ->where('campo', 'valor')
+    ->orderBy('campo', 'asc')
+    ->get();
 ```
 
-### Paso 5: Crear el Controlador
+**Métodos clave que necesitarás:**
 
-```bash
-php artisan make:controller ProductoController
-```
+- `get()` - Obtener todos los resultados
+- `find($id)` - Buscar por ID
+- `where('campo', 'valor')` - Filtrar
+- `where('campo', '<', 100)` - Comparaciones
+- `orderBy('campo', 'asc')` - Ordenar
+- `count()` - Contar registros
 
-Edita `app/Http/Controllers/ProductoController.php`:
+### Sobre el Controlador
 
 ```php
-<?php
-
-namespace App\Http\Controllers;
-
-use Illuminate\Http\Request;
+// Importar DB
 use Illuminate\Support\Facades\DB;
 
-class ProductoController extends Controller
+// Estructura de método
+public function nombreMetodo($parametro)
 {
-    // Listar todos los productos
-    public function index()
-    {
-        $productos = DB::table('productos')
-            ->orderBy('nombre', 'asc')
-            ->get();
-        
-        return view('productos.index', ['productos' => $productos]);
-    }
+    $datos = DB::table('productos')->where(...)->get();
+    return view('vista', ['datos' => $datos]);
+}
 
-    // Mostrar detalle de un producto
-    public function show($id)
-    {
-        $producto = DB::table('productos')->find($id);
-        
-        if (!$producto) {
-            abort(404, 'Producto no encontrado');
-        }
-        
-        return view('productos.show', ['producto' => $producto]);
-    }
-
-    // Productos destacados
-    public function destacados()
-    {
-        $productos = DB::table('productos')
-            ->where('destacado', 1)
-            ->orderBy('precio', 'desc')
-            ->get();
-        
-        return view('productos.destacados', ['productos' => $productos]);
-    }
-
-    // Productos por categoría
-    public function porCategoria($categoria)
-    {
-        $productos = DB::table('productos')
-            ->where('categoria', $categoria)
-            ->orderBy('precio', 'asc')
-            ->get();
-        
-        $totalProductos = count($productos);
-        
-        return view('productos.categoria', [
-            'productos' => $productos,
-            'categoria' => $categoria,
-            'total' => $totalProductos
-        ]);
-    }
-
-    // Productos económicos (menos de 100€)
-    public function economicos()
-    {
-        $productos = DB::table('productos')
-            ->where('precio', '<', 100)
-            ->orderBy('precio', 'asc')
-            ->get();
-        
-        return view('productos.economicos', ['productos' => $productos]);
-    }
+// Manejo de errores 404
+$producto = DB::table('productos')->find($id);
+if (!$producto) {
+    abort(404, 'Producto no encontrado');
 }
 ```
 
-### Paso 6: Crear las Rutas
-
-Edita `routes/web.php`:
+### Sobre las Vistas
 
 ```php
+// Usar datos de objetos (no arrays)
+{{ $producto->nombre }}
+{{ $producto->precio }}
+
+// Directivas útiles
+@foreach($productos as $producto)
+    ...
+@endforeach
+
+@if($producto->destacado)
+    <span>⭐ Destacado</span>
+@endif
+
+@forelse($productos as $producto)
+    ...
+@empty
+    <p>No hay productos</p>
+@endforelse
+```
+
+### Sobre las Rutas
+
+```php
+// Importar controlador
 use App\Http\Controllers\ProductoController;
 
-// Rutas de productos
-Route::get('/productos', [ProductoController::class, 'index'])->name('productos.index');
-Route::get('/productos/destacados', [ProductoController::class, 'destacados'])->name('productos.destacados');
-Route::get('/productos/economicos', [ProductoController::class, 'economicos'])->name('productos.economicos');
-Route::get('/productos/categoria/{categoria}', [ProductoController::class, 'porCategoria'])->name('productos.categoria');
-Route::get('/productos/{id}', [ProductoController::class, 'show'])->name('productos.show');
+// Definir ruta
+Route::get('/ruta', [ProductoController::class, 'metodo'])->name('nombre.ruta');
+
+// Usar en vistas
+<a href="{{ route('nombre.ruta') }}">Enlace</a>
+<a href="{{ route('nombre.ruta', $id) }}">Con parámetro</a>
 ```
 
-**⚠️ Importante:** La ruta `productos/destacados` DEBE ir ANTES de `productos/{id}` para evitar conflictos.
+---
 
-### Paso 7: Crear Carpeta de Vistas
+## ✅ VERIFICACIÓN
 
-```bash
-mkdir C:\MAMP\htdocs\marvel-hub\resources\views\productos
-```
+Antes de consultar las soluciones, comprueba que:
 
-O si usas proyecto separado:
+- [ ] La base de datos `tienda` existe con 10 productos
+- [ ] Tinker muestra productos correctamente
+- [ ] El controlador se creó con `php artisan make:controller`
+- [ ] Todas las rutas están definidas con nombres
+- [ ] La carpeta `productos/` existe en `resources/views/`
+- [ ] La vista de listado muestra todos los productos
+- [ ] La vista de detalle muestra información completa
+- [ ] El filtro de destacados funciona
+- [ ] El filtro de económicos funciona
+- [ ] El filtro por categoría funciona
+- [ ] Los enlaces entre vistas funcionan
+- [ ] Acceder a ID inexistente muestra error 404
+- [ ] El diseño es atractivo y funcional
 
-```bash
-mkdir C:\MAMP\htdocs\tienda-productos\resources\views\productos
-```
+---
 
-### Paso 8: Vista de Listado (index)
+## 🏆 RETOS ADICIONALES (Opcionales)
 
-Crea `resources/views/productos/index.blade.php`:
-
-```html
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tienda de Productos</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 40px 20px;
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 40px;
-        }
-        
-        h1 {
-            font-size: 3em;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-        
-        .filters {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-        }
-        
-        .filter-btn {
-            background: white;
-            color: #667eea;
-            padding: 12px 25px;
-            border-radius: 25px;
-            text-decoration: none;
-            font-weight: bold;
-            transition: all 0.3s;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-        
-        .filter-btn:hover {
-            background: #667eea;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-        }
-        
-        .products-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 25px;
-        }
-        
-        .product-card {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            text-decoration: none;
-            color: inherit;
-            display: block;
-            transition: all 0.3s;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            position: relative;
-        }
-        
-        .product-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 12px 20px rgba(0,0,0,0.2);
-        }
-        
-        .badge-destacado {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: #ff6b6b;
-            color: white;
-            padding: 5px 15px;
-            border-radius: 15px;
-            font-size: 0.8em;
-            font-weight: bold;
-        }
-        
-        .product-name {
-            font-size: 1.3em;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 10px;
-        }
-        
-        .product-brand {
-            color: #667eea;
-            font-weight: bold;
-            margin-bottom: 8px;
-        }
-        
-        .product-description {
-            color: #666;
-            font-size: 0.9em;
-            margin-bottom: 15px;
-            line-height: 1.5;
-        }
-        
-        .product-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 2px solid #f0f0f0;
-        }
-        
-        .product-price {
-            font-size: 1.8em;
-            font-weight: bold;
-            color: #4caf50;
-        }
-        
-        .product-stock {
-            font-size: 0.9em;
-            color: #666;
-        }
-        
-        .stock-ok {
-            color: #4caf50;
-        }
-        
-        .stock-bajo {
-            color: #ff9800;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🛒 Tienda de Productos</h1>
-            <p>{{ count($productos) }} productos disponibles</p>
-        </div>
-        
-        <div class="filters">
-            <a href="{{ route('productos.index') }}" class="filter-btn">Todos</a>
-            <a href="{{ route('productos.destacados') }}" class="filter-btn">⭐ Destacados</a>
-            <a href="{{ route('productos.economicos') }}" class="filter-btn">💰 Económicos</a>
-            <a href="{{ route('productos.categoria', 'Informática') }}" class="filter-btn">Informática</a>
-            <a href="{{ route('productos.categoria', 'Audio') }}" class="filter-btn">Audio</a>
-        </div>
-        
-        <div class="products-grid">
-            @foreach($productos as $producto)
-                <a href="{{ route('productos.show', $producto->id) }}" class="product-card">
-                    @if($producto->destacado)
-                        <span class="badge-destacado">⭐ Destacado</span>
-                    @endif
-                    
-                    <div class="product-brand">{{ $producto->marca }}</div>
-                    <div class="product-name">{{ $producto->nombre }}</div>
-                    <div class="product-description">{{ $producto->descripcion }}</div>
-                    
-                    <div class="product-footer">
-                        <div class="product-price">{{ number_format($producto->precio, 2) }}€</div>
-                        <div class="product-stock {{ $producto->stock > 10 ? 'stock-ok' : 'stock-bajo' }}">
-                            Stock: {{ $producto->stock }}
-                        </div>
-                    </div>
-                </a>
-            @endforeach
-        </div>
-    </div>
-</body>
-</html>
-```
-
-### Paso 9: Vista de Detalle (show)
-
-Crea `resources/views/productos/show.blade.php`:
-
-```html
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $producto->nombre }}</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 40px 20px;
-        }
-        
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-        
-        .product-detail {
-            background: white;
-            border-radius: 15px;
-            padding: 40px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-        
-        .badge {
-            display: inline-block;
-            background: #ff6b6b;
-            color: white;
-            padding: 8px 20px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            font-weight: bold;
-            margin-bottom: 15px;
-        }
-        
-        .brand {
-            color: #667eea;
-            font-size: 1.2em;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        
-        h1 {
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 2.5em;
-        }
-        
-        .description {
-            color: #666;
-            font-size: 1.1em;
-            line-height: 1.8;
-            margin-bottom: 30px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }
-        
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .info-item {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            border-left: 4px solid #667eea;
-        }
-        
-        .info-label {
-            font-weight: bold;
-            color: #667eea;
-            font-size: 0.9em;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-        }
-        
-        .info-value {
-            color: #333;
-            font-size: 1.3em;
-        }
-        
-        .price-section {
-            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 12px;
-            text-align: center;
-            margin-bottom: 25px;
-        }
-        
-        .price-label {
-            font-size: 1em;
-            margin-bottom: 10px;
-        }
-        
-        .price-value {
-            font-size: 3.5em;
-            font-weight: bold;
-        }
-        
-        .back-link {
-            display: inline-block;
-            background: #667eea;
-            color: white;
-            padding: 15px 35px;
-            text-decoration: none;
-            border-radius: 30px;
-            font-weight: bold;
-            transition: all 0.3s;
-        }
-        
-        .back-link:hover {
-            background: #764ba2;
-            transform: translateX(-5px);
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="product-detail">
-            @if($producto->destacado)
-                <span class="badge">⭐ Producto Destacado</span>
-            @endif
-            
-            <div class="brand">{{ $producto->marca }}</div>
-            <h1>{{ $producto->nombre }}</h1>
-            
-            <div class="description">
-                {{ $producto->descripcion }}
-            </div>
-            
-            <div class="price-section">
-                <div class="price-label">Precio</div>
-                <div class="price-value">{{ number_format($producto->precio, 2) }}€</div>
-            </div>
-            
-            <div class="info-grid">
-                <div class="info-item">
-                    <div class="info-label">Categoría</div>
-                    <div class="info-value">{{ $producto->categoria }}</div>
-                </div>
-                
-                <div class="info-item">
-                    <div class="info-label">Stock Disponible</div>
-                    <div class="info-value">{{ $producto->stock }} unidades</div>
-                </div>
-                
-                <div class="info-item">
-                    <div class="info-label">Código del Producto</div>
-                    <div class="info-value">#{{ str_pad($producto->id, 5, '0', STR_PAD_LEFT) }}</div>
-                </div>
-                
-                <div class="info-item">
-                    <div class="info-label">Fecha de Registro</div>
-                    <div class="info-value">{{ date('d/m/Y', strtotime($producto->created_at)) }}</div>
-                </div>
-            </div>
-            
-            <a href="{{ route('productos.index') }}" class="back-link">
-                ← Volver al catálogo
-            </a>
-        </div>
-    </div>
-</body>
-</html>
-```
-
-### Paso 10: Vista de Destacados
-
-Crea `resources/views/productos/destacados.blade.php`:
-
-```html
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Productos Destacados</title>
-    <style>
-        /* Reutiliza los estilos de index.blade.php */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
-            min-height: 100vh;
-            padding: 40px 20px;
-        }
-        .container { max-width: 1400px; margin: 0 auto; }
-        .header { text-align: center; color: white; margin-bottom: 40px; }
-        h1 { font-size: 3em; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
-        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 30px; }
-        .product-card {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            text-decoration: none;
-            color: inherit;
-            display: block;
-            transition: all 0.3s;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-            border: 3px solid #ff6b6b;
-        }
-        .product-card:hover { transform: translateY(-10px) scale(1.02); box-shadow: 0 15px 30px rgba(0,0,0,0.3); }
-        .product-name { font-size: 1.5em; font-weight: bold; color: #333; margin-bottom: 10px; }
-        .product-brand { color: #ff6b6b; font-weight: bold; margin-bottom: 10px; font-size: 1.1em; }
-        .product-description { color: #666; margin-bottom: 20px; line-height: 1.6; }
-        .product-price { font-size: 2.2em; font-weight: bold; color: #4caf50; text-align: center; margin-top: 20px; }
-        .back-link {
-            display: inline-block;
-            background: white;
-            color: #ff6b6b;
-            padding: 12px 30px;
-            text-decoration: none;
-            border-radius: 25px;
-            font-weight: bold;
-            margin-bottom: 30px;
-            transition: all 0.3s;
-        }
-        .back-link:hover { background: #ff6b6b; color: white; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <a href="{{ route('productos.index') }}" class="back-link">← Volver al catálogo</a>
-        
-        <div class="header">
-            <h1>⭐ Productos Destacados</h1>
-            <p>{{ count($productos) }} productos seleccionados</p>
-        </div>
-        
-        <div class="products-grid">
-            @forelse($productos as $producto)
-                <a href="{{ route('productos.show', $producto->id) }}" class="product-card">
-                    <div class="product-brand">{{ $producto->marca }}</div>
-                    <div class="product-name">{{ $producto->nombre }}</div>
-                    <div class="product-description">{{ $producto->descripcion }}</div>
-                    <div class="product-price">{{ number_format($producto->precio, 2) }}€</div>
-                </a>
-            @empty
-                <p style="color: white; text-align: center; grid-column: 1/-1;">No hay productos destacados</p>
-            @endforelse
-        </div>
-    </div>
-</body>
-</html>
-```
-
-### Paso 11: Vista de Productos por Categoría
-
-Crea `resources/views/productos/categoria.blade.php`:
-
-```html
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>{{ $categoria }} - Productos</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 40px 20px;
-        }
-        .container { max-width: 1400px; margin: 0 auto; }
-        .header { text-align: center; color: white; margin-bottom: 40px; }
-        h1 { font-size: 3em; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
-        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; }
-        .product-card {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            text-decoration: none;
-            color: inherit;
-            display: block;
-            transition: all 0.3s;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .product-card:hover { transform: translateY(-8px); box-shadow: 0 12px 20px rgba(0,0,0,0.2); }
-        .product-name { font-size: 1.3em; font-weight: bold; color: #333; margin-bottom: 10px; }
-        .product-price { font-size: 1.8em; font-weight: bold; color: #4caf50; margin-top: 15px; }
-        .back-link {
-            display: inline-block;
-            background: white;
-            color: #667eea;
-            padding: 12px 30px;
-            text-decoration: none;
-            border-radius: 25px;
-            font-weight: bold;
-            margin-bottom: 30px;
-        }
-        .back-link:hover { background: #764ba2; color: white; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <a href="{{ route('productos.index') }}" class="back-link">← Volver al catálogo</a>
-        
-        <div class="header">
-            <h1>📁 {{ $categoria }}</h1>
-            <p>{{ $total }} productos encontrados</p>
-        </div>
-        
-        <div class="products-grid">
-            @forelse($productos as $producto)
-                <a href="{{ route('productos.show', $producto->id) }}" class="product-card">
-                    <div class="product-name">{{ $producto->nombre }}</div>
-                    <div class="product-price">{{ number_format($producto->precio, 2) }}€</div>
-                </a>
-            @empty
-                <p style="color: white; text-align: center; grid-column: 1/-1;">
-                    No hay productos en esta categoría
-                </p>
-            @endforelse
-        </div>
-    </div>
-</body>
-</html>
-```
-
-### Paso 12: Vista de Productos Económicos
-
-Crea `resources/views/productos/economicos.blade.php`:
-
-```html
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Productos Económicos</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
-            min-height: 100vh;
-            padding: 40px 20px;
-        }
-        .container { max-width: 1400px; margin: 0 auto; }
-        .header { text-align: center; color: white; margin-bottom: 40px; }
-        h1 { font-size: 3em; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
-        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 25px; }
-        .product-card {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            text-decoration: none;
-            color: inherit;
-            display: block;
-            transition: all 0.3s;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            border: 2px solid #4caf50;
-        }
-        .product-card:hover { transform: translateY(-8px); box-shadow: 0 12px 20px rgba(0,0,0,0.2); }
-        .product-name { font-size: 1.3em; font-weight: bold; color: #333; margin-bottom: 10px; }
-        .product-price { font-size: 1.8em; font-weight: bold; color: #4caf50; margin-top: 15px; }
-        .back-link {
-            display: inline-block;
-            background: white;
-            color: #4caf50;
-            padding: 12px 30px;
-            text-decoration: none;
-            border-radius: 25px;
-            font-weight: bold;
-            margin-bottom: 30px;
-        }
-        .back-link:hover { background: #4caf50; color: white; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <a href="{{ route('productos.index') }}" class="back-link">← Volver al catálogo</a>
-        
-        <div class="header">
-            <h1>💰 Productos Económicos</h1>
-            <p>{{ count($productos) }} productos por menos de 100€</p>
-        </div>
-        
-        <div class="products-grid">
-            @foreach($productos as $producto)
-                <a href="{{ route('productos.show', $producto->id) }}" class="product-card">
-                    <div class="product-name">{{ $producto->nombre }}</div>
-                    <div class="product-price">{{ number_format($producto->precio, 2) }}€</div>
-                </a>
-            @endforeach
-        </div>
-    </div>
-</body>
-</html>
-```
-
-### Paso 13: Probar el Ejercicio
-
-1. Inicia el servidor:
-   ```bash
-   php artisan serve
-   ```
-
-2. Accede a las diferentes rutas:
-   - http://localhost:8000/productos (todos)
-   - http://localhost:8000/productos/destacados (solo destacados)
-   - http://localhost:8000/productos/economicos (menos de 100€)
-   - http://localhost:8000/productos/categoria/Audio (filtrado)
-   - http://localhost:8000/productos/1 (detalle)
-
-3. Verifica las rutas:
-   ```bash
-   php artisan route:list --name=productos
-   ```
-
-### Verificación
-
-Comprueba que todo funciona:
-
-- ✅ Base de datos `tienda` creada con tabla `productos`
-- ✅ 10 productos insertados correctamente
-- ✅ Conexión a BD configurada en `.env`
-- ✅ Tinker muestra productos correctamente
-- ✅ Controlador usa `DB::table()` en todos los métodos
-- ✅ Vista de listado muestra todos los productos
-- ✅ Vista de detalle muestra información completa
-- ✅ Filtro de destacados funciona
-- ✅ Filtro de económicos funciona (< 100€)
-- ✅ Filtro por categoría funciona
-- ✅ Vistas usan objetos `$producto->campo` (no arrays)
-- ✅ Enlaces usan `route()` helper
-- ✅ Validación con `abort(404)` para IDs inexistentes
-
-### Reto Extra (Opcional)
-
-Añade estas funcionalidades avanzadas:
+Si terminaste rápido, intenta añadir:
 
 1. **Búsqueda por marca:**
-   ```php
-   public function porMarca($marca)
-   {
-       $productos = DB::table('productos')
-           ->where('marca', $marca)
-           ->get();
-       return view('productos.marca', compact('productos', 'marca'));
-   }
-   ```
+   - Ruta: `/productos/marca/{marca}`
+   - Método en controlador
+   - Vista correspondiente
 
 2. **Productos con stock bajo:**
-   ```php
-   public function stockBajo()
-   {
-       $productos = DB::table('productos')
-           ->where('stock', '<', 20)
-           ->orderBy('stock', 'asc')
-           ->get();
-       return view('productos.stock-bajo', compact('productos'));
-   }
-   ```
+   - Filtrar productos con stock < 20
+   - Ordenar por stock ascendente
 
 3. **Estadísticas:**
-   ```php
-   public function estadisticas()
-   {
-       $total = DB::table('productos')->count();
-       $precioMedio = DB::table('productos')->avg('precio');
-       $stockTotal = DB::table('productos')->sum('stock');
-       $masCaro = DB::table('productos')->max('precio');
-       
-       return view('productos.stats', compact('total', 'precioMedio', 'stockTotal', 'masCaro'));
-   }
-   ```
+   - Total de productos
+   - Precio promedio
+   - Stock total
+   - Producto más caro
 
-4. **Productos más caros (Top 3):**
-   ```php
-   public function masCaros()
-   {
-       $productos = DB::table('productos')
-           ->orderBy('precio', 'desc')
-           ->limit(3)
-           ->get();
-       return view('productos.top', compact('productos'));
-   }
-   ```
+4. **Top 3 más caros:**
+   - Ordenar por precio descendente
+   - Limitar a 3 resultados
+   - Vista especial
 
-### Conceptos Practicados
+---
 
-Con este ejercicio has trabajado:
+## 📝 NOTA IMPORTANTE
 
-- ✅ Crear base de datos y tablas con SQL
-- ✅ Configurar conexión en `.env`
-- ✅ Probar conexión con Tinker
-- ✅ Query Builder: `DB::table('tabla')`
-- ✅ Métodos de consulta: `get()`, `find()`, `first()`
-- ✅ Filtros: `where('campo', 'valor')`
-- ✅ Ordenación: `orderBy('campo', 'asc')`
-- ✅ Agregación: `count()`, `avg()`, `sum()`, `max()`
-- ✅ Comparaciones: `where('precio', '<', 100)`
-- ✅ Objetos vs Arrays: `$producto->nombre` vs `$producto['nombre']`
-- ✅ Importar facade: `use Illuminate\Support\Facades\DB;`
-- ✅ Validación de existencia con `abort(404)`
-- ✅ Directiva `@forelse` para listas vacías
-- ✅ Múltiples vistas para diferentes filtros
-- ✅ Rutas con parámetros: `categoria/{categoria}`
+**Las soluciones completas de este ejercicio se encuentran en un documento separado:**
 
-### Diferencias entre Fase 2 y Fase 3
+📄 **Archivo:** `SolucionPractica.md`
 
-**Fase 2 (Arrays hardcodeados):**
-```php
-private function getAllBooks()
-{
-    return [
-        1 => ['titulo' => 'Libro 1', ...],
-        2 => ['titulo' => 'Libro 2', ...],
-    ];
-}
-```
+**Recomendación:** Intenta resolver el ejercicio por tu cuenta antes de consultar las soluciones. Usa el checklist de verificación para comprobar tu progreso.
 
-**Fase 3 (Base de datos real):**
-```php
-public function index()
-{
-    $productos = DB::table('productos')->get();
-    return view('productos.index', compact('productos'));
-}
-```
+**Si te atascas:**
+1. Revisa las pistas y recordatorios
+2. Consulta la teoría de esta fase
+3. Revisa ejemplos del proyecto Marvel Hub
+4. Solo entonces, consulta la solución específica que necesites
 
-**Ventajas evidentes:**
-- ✅ Datos persistentes (no se pierden al reiniciar)
-- ✅ Fácil de modificar sin tocar código
-- ✅ Consultas complejas (filtros, búsquedas, estadísticas)
-- ✅ Escalable a millones de registros
-- ✅ Múltiples usuarios pueden modificar datos
-
-
+**¡Buena suerte con el ejercicio!** 🚀
