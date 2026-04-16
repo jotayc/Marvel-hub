@@ -628,7 +628,7 @@ public function index()
 
 ## Objetos vs Arrays
 
-Los resultados de `DB::table()->get()` devuelven **objetos**, no arrays.
+Los resultados de `DB::table()->find()` devuelve **un objeto**, no arrays.
 
 **Acceso con objetos:**
 ```php
