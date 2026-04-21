@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 public function index()
 {
     $heroes = DB::table('heroes')->get();
-    return view('heroes.index', compact('heroes'));
+    return view('heroes.index', ['heroes' => $heroes]);
 }
 
 public function show($id)
@@ -22,7 +22,7 @@ public function show($id)
     if (!$hero) {
         abort(404);
     }
-    return view('heroes.show', compact('hero'));
+    return view('heroes.show', ['hero' => $hero]);
 }
 ```
 
@@ -432,7 +432,35 @@ class HeroController extends Controller
 
 **Importante:** Ya NO necesitas `use Illuminate\Support\Facades\DB;`
 
-### 2.2. Método index() - Listar todos los héroes
+### 2.2. Una mejora: la función compact()
+
+Antes de actualizar los métodos, vale la pena conocer `compact()`, una función de PHP que a partir de esta fase usaremos habitualmente al pasar datos a las vistas.
+
+Hasta ahora en la Fase 3 escribías:
+
+```php
+return view('heroes.index', ['heroes' => $heroes]);
+```
+
+Con `compact()` puedes escribir lo mismo de forma más corta:
+
+```php
+return view('heroes.index', compact('heroes'));
+```
+
+`compact('heroes')` construye automáticamente el array `['heroes' => $heroes]`: toma la variable `$heroes` que existe en ese momento y usa su nombre como clave. Cuando necesitas pasar varias variables la diferencia es más evidente:
+
+```php
+// Sin compact
+return view('heroes.team', ['heroes' => $heroes, 'team' => $team]);
+
+// Con compact
+return view('heroes.team', compact('heroes', 'team'));
+```
+
+El resultado es idéntico en ambos casos. `compact()` no hace nada que no pudieras hacer con un array, simplemente elimina la repetición de escribir el nombre de la variable dos veces.
+
+### 2.3. Método index() - Listar todos los héroes
 
 **Antes (Query Builder):**
 
@@ -440,7 +468,7 @@ class HeroController extends Controller
 public function index()
 {
     $heroes = DB::table('heroes')->get();
-    return view('heroes.index', compact('heroes'));
+    return view('heroes.index', ['heroes' => $heroes]);
 }
 ```
 
@@ -458,7 +486,7 @@ public function index()
 - `DB::table('heroes')->get()` → `Hero::all()`
 - Más corto y semántico
 
-### 2.3. Método show() - Mostrar detalle de un héroe
+### 2.4. Método show() - Mostrar detalle de un héroe
 
 **Antes (Query Builder):**
 
@@ -471,7 +499,7 @@ public function show($id)
         abort(404);
     }
     
-    return view('heroes.show', compact('hero'));
+    return view('heroes.show', ['hero' => $hero]);
 }
 ```
 
@@ -489,7 +517,7 @@ public function show($id)
 - `DB::table('heroes')->find($id)` → `Hero::findOrFail($id)`
 - Ya NO necesitas el `if (!$hero)` → `findOrFail()` lanza 404 automáticamente
 
-### 2.4. Método active() - Héroes activos
+### 2.5. Método active() - Héroes activos
 
 **Antes (Query Builder):**
 
@@ -500,7 +528,7 @@ public function active()
         ->where('is_active', 1)
         ->get();
     
-    return view('heroes.active', compact('heroes'));
+    return view('heroes.active', ['heroes' => $heroes]);
 }
 ```
 
@@ -519,7 +547,7 @@ public function active()
 - `->where('is_active', 1)` → `->where('is_active', true)`
   - Gracias a `$casts`, puedes usar booleanos directamente
 
-### 2.5. Método powerful() - Héroes poderosos
+### 2.6. Método powerful() - Héroes poderosos
 
 **Antes (Query Builder):**
 
@@ -531,7 +559,7 @@ public function powerful()
         ->orderBy('power_level', 'desc')
         ->get();
     
-    return view('heroes.powerful', compact('heroes'));
+    return view('heroes.powerful', ['heroes' => $heroes]);
 }
 ```
 
@@ -552,7 +580,7 @@ public function powerful()
 - `DB::table('heroes')` → `Hero::`
 - El resto es idéntico (Eloquent usa los mismos métodos de Query Builder)
 
-### 2.6. Método team() - Héroes por equipo
+### 2.7. Método team() - Héroes por equipo
 
 **Antes (Query Builder):**
 
@@ -563,7 +591,7 @@ public function team($team)
         ->where('team', $team)
         ->get();
     
-    return view('heroes.team', compact('heroes', 'team'));
+    return view('heroes.team', ['heroes' => $heroes, 'team' => $team]);
 }
 ```
 
@@ -580,7 +608,7 @@ public function team($team)
 **Cambios:**
 - `DB::table('heroes')` → `Hero::`
 
-### 2.7. HeroController completo con Eloquent
+### 2.8. HeroController completo con Eloquent
 
 ```php
 <?php
@@ -632,7 +660,7 @@ class HeroController extends Controller
 }
 ```
 
-### 2.8. Probar los cambios
+### 2.9. Probar los cambios
 
 **No necesitas modificar:**
 - ✅ Las rutas (`routes/web.php`)
