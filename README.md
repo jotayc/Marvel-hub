@@ -1,375 +1,404 @@
-# Fase 3: Acceso a la Base de Datos
-
-En la Fase 2 creamos controladores que devuelven datos, pero esos datos están "hardcodeados" en arrays dentro del código. Cada vez que quieras añadir un héroe, tendrías que modificar el código del controlador. Esto no es práctico.
-
-En esta fase aprenderás a conectar con la base de datos real que creaste en la Fase 0 y a obtener datos dinámicos.
+# Fase 4: Modelos y Eloquent ORM
 
 ---
 
-## ¿Qué es una Base de Datos Relacional?
+## De dónde partimos
 
-Una **base de datos relacional** es un sistema que almacena información organizada en **tablas** (como hojas de Excel). Cada tabla tiene:
+En la **Fase 3** trabajaste con el proyecto **Marvel Hub** usando **Query Builder** para acceder a la base de datos:
 
-- **Columnas**: Definen qué tipo de información se guarda (nombre, poder, nivel_poder, etc.)
-- **Filas**: Cada fila es un registro individual (un héroe específico)
+```php
+// HeroController.php (Fase 3)
+use Illuminate\Support\Facades\DB;
 
-**Ventajas sobre arrays en código:**
+public function index()
+{
+    $heroes = DB::table('heroes')->get();
+    return view('heroes.index', compact('heroes'));
+}
 
-| Arrays en código | Base de datos |
-|-----------------|---------------|
-| ❌ Datos fijos en archivos | ✅ Datos separados del código |
-| ❌ Cambios requieren modificar código | ✅ Cambios sin tocar código |
-| ❌ Difícil gestionar muchos datos | ✅ Optimizado para millones de registros |
-| ❌ Un usuario no puede añadir datos | ✅ Usuarios pueden crear/editar datos |
-| ❌ Sin búsquedas complejas | ✅ Búsquedas, filtros, ordenación |
-
----
-
-## Repaso: Base de Datos marvel_hub
-
-En la Fase 0 creaste la base de datos `marvel_hub` con la tabla `heroes` y datos de ejemplo.
-
-**Estructura de la tabla heroes:**
-
-| Columna | Tipo | Descripción |
-|---------|------|-------------|
-| `id` | INT | Identificador único (clave primaria) |
-| `name` | VARCHAR(100) | Nombre del héroe |
-| `real_name` | VARCHAR(100) | Nombre real |
-| `power` | VARCHAR(255) | Descripción del poder |
-| `power_level` | INT | Nivel de poder (0-10000) |
-| `team` | VARCHAR(100) | Equipo al que pertenece |
-| `bio` | TEXT | Biografía del héroe |
-| `is_active` | TINYINT(1) | 1 = activo, 0 = inactivo |
-| `created_at` | TIMESTAMP | Fecha de creación |
-| `updated_at` | TIMESTAMP | Fecha de última actualización |
-
-**Datos de ejemplo insertados:**
-- Iron Man (Tony Stark)
-- Thor (Thor Odinson)
-- Spider-Man (Peter Parker)
-- Doctor Strange (Stephen Strange)
-- Black Widow (Natasha Romanoff)
-
----
-
-## Verificar Configuración de la Base de Datos
-
-Antes de acceder a la BD desde Laravel, verifica que la configuración en `.env` es correcta.
-
-Abre el archivo `.env` en la raíz del proyecto:
-
-```env
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=marvel_hub
-DB_USERNAME=root
-DB_PASSWORD=root
+public function show($id)
+{
+    $hero = DB::table('heroes')->find($id);
+    if (!$hero) {
+        abort(404);
+    }
+    return view('heroes.show', compact('hero'));
+}
 ```
 
-**Parámetros:**
+Esta forma funciona perfectamente, pero Laravel ofrece una herramienta más potente y elegante: **Eloquent ORM**.
 
-- `DB_CONNECTION=mysql` → Tipo de base de datos (MySQL)
-- `DB_HOST=127.0.0.1` → Dirección del servidor (localhost)
-- `DB_PORT=3306` → Puerto de MySQL
-- `DB_DATABASE=marvel_hub` → Nombre de la base de datos
-- `DB_USERNAME=root` → Usuario de MySQL
-- `DB_PASSWORD=root` → Contraseña (en MAMP por defecto es `root`)
+En esta fase vas a transformar tu proyecto Marvel Hub para usar **modelos Eloquent** en lugar de Query Builder.
 
-**Si modificas `.env`, limpia la caché:**
+---
+
+## Preparación: Crear una rama nueva
+
+Antes de empezar, vamos a crear una rama nueva en Git para trabajar con Eloquent sin modificar la Fase 3.
+
+**Si estás usando Git:**
 
 ```bash
-php artisan config:clear
+# Asegúrate de estar en la rama de la Fase 3
+git checkout 3.AccesoBBDD
+
+# Crear la nueva rama y cambiar a ella
+git checkout -b 4.Eloquent
 ```
+
+**Si no usas Git:** Puedes continuar directamente modificando el proyecto.
 
 ---
 
-## Probar Conexión con Tinker
+## Paso 1: Crear el Modelo Hero
 
-Antes de modificar código, verifica que Laravel puede conectarse a la BD.
+Un **modelo** es una clase PHP que representa una tabla de la base de datos. Laravel incluye un comando Artisan para crear modelos.
 
-**¿Qué es Tinker?**
+### 1.1. Generar el modelo
 
-Tinker es una herramienta interactiva de Laravel (ya la usaste en Fase 0) que te permite ejecutar código PHP y consultas a la BD en tiempo real, sin crear archivos.
-
-**Iniciar Tinker:**
+Abre tu terminal en la raíz del proyecto y ejecuta:
 
 ```bash
-php artisan tinker
+php artisan make:model Hero
 ```
 
-**Ejecutar una consulta de prueba:**
+**Salida esperada:**
 
-```php
-DB::table('heroes')->count();
+```
+INFO  Model [app/Models/Hero.php] created successfully.
 ```
 
-Debería devolver `5` (el número de héroes insertados en Fase 0).
+**¿Dónde se crea?** En `app/Models/Hero.php`
 
-**Salir de Tinker:**
+### 1.2. Estructura del modelo generado
 
-```php
-exit
-```
-
-**Si da error:**
-- Verifica que la BD `marvel_hub` existe en phpMyAdmin
-- Verifica que la tabla `heroes` tiene datos
-- Verifica las credenciales en `.env`
-
----
-
-## ¿Qué es el Query Builder?
-
-El **Query Builder** es una herramienta de Laravel que te permite construir consultas SQL de forma segura usando métodos PHP en lugar de escribir SQL directamente.
-
-**Ventajas:**
-
-1. **Más seguro** - Protege contra inyección SQL automáticamente
-2. **Más legible** - Código PHP en lugar de strings SQL
-3. **Independiente de la BD** - Funciona igual en MySQL, PostgreSQL, SQLite, etc.
-4. **Autocompletado** - El IDE puede sugerirte métodos
-
-**Comparación:**
-
-```php
-// SQL tradicional (string)
-$sql = "SELECT * FROM heroes WHERE power_level > 8000";
-$heroes = DB::select($sql);
-
-// Query Builder (métodos PHP)
-$heroes = DB::table('heroes')->where('power_level', '>', 8000)->get();
-```
-
-**¿Qué es DB?**
-
-`DB` es una **facade** de Laravel. Una facade es una forma simplificada de acceder a funcionalidades complejas de Laravel. En este caso, `DB` te da acceso al Query Builder.
-
----
-
-## Primera Consulta: Obtener Todos los Héroes
-
-Vamos a modificar el método `index()` del `HeroController` para obtener datos de la BD.
-
-### Paso 1: Importar la facade DB
-
-Edita `app/Http/Controllers/HeroController.php` y agrega el `use` al principio:
+Abre el archivo `app/Models/Hero.php` y verás:
 
 ```php
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Models;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;  // ← NUEVA LÍNEA
+use Illuminate\Database\Eloquent\Model;
 
-class HeroController extends Controller
+class Hero extends Model
 {
-    // ...
+    //
 }
 ```
 
-**¿Por qué importar?**
+A primera vista puede llamar la atención que la clase esté prácticamente vacía. Antes de analizar línea por línea, vale la pena entender por qué.
 
-Para poder usar `DB::table()` necesitas importar la clase. El `use` le dice a PHP dónde encontrar la clase `DB`.
+**¿Por qué el modelo no tiene atributos privados ni métodos getters/setters?**
 
-### Paso 2: Modificar el método index()
-
-Reemplaza el método `index()`:
+En PHP orientado a objetos clásico estás acostumbrado a clases con esta estructura:
 
 ```php
-public function index()
-{
-    // Obtener todos los héroes de la base de datos
-    $heroes = DB::table('heroes')->get();
-    
-    return view('heroes.index', ['heroes' => $heroes]);
-}
-```
+class Hero {
+    private string $name;
+    private string $power;
 
-**Desglose:**
-
-```php
-DB::table('heroes')
-```
-Indica que vamos a consultar la tabla `heroes`.
-
-```php
-->get()
-```
-Ejecuta la consulta y devuelve **todos** los registros de la tabla.
-
-**Resultado:**
-
-`$heroes` ahora es una **colección** de objetos, no un array. Cada objeto representa una fila de la tabla.
-
-### Paso 3: Adaptar la vista
-
-La vista espera acceder a los datos con `$hero['name']`, pero ahora `$hero` es un objeto, no un array.
-
-Edita `resources/views/heroes/index.blade.php`:
-
-**Antes (con arrays):**
-```html
-<div class="hero-name">{{ $hero['name'] }}</div>
-<div class="hero-real-name">{{ $hero['real_name'] }}</div>
-<div class="hero-power">{{ $hero['power'] }}</div>
-```
-
-**Ahora (con objetos):**
-```html
-<div class="hero-name">{{ $hero->name }}</div>
-<div class="hero-real-name">{{ $hero->real_name }}</div>
-<div class="hero-power">{{ $hero->power }}</div>
-```
-
-**Cambio:** `$hero['campo']` → `$hero->campo`
-
-También cambia el enlace:
-
-**Antes:**
-```html
-<a href="{{ route('heroes.show', $hero['id']) }}" class="hero-card">
-```
-
-**Ahora:**
-```html
-<a href="{{ route('heroes.show', $hero->id) }}" class="hero-card">
-```
-
-### Paso 4: Probar
-
-Inicia el servidor:
-
-```bash
-php artisan serve
-```
-
-Visita: http://localhost:8000/heroes
-
-Deberías ver los 5 héroes de la base de datos.
-
----
-
-## Consulta con WHERE: Obtener un Héroe Específico
-
-Ahora vamos a modificar el método `show()` para obtener un héroe por su ID.
-
-### Opción 1: Usando where() + first()
-
-Edita el método `show()` en `HeroController.php`:
-
-```php
-public function show($id)
-{
-    // Buscar héroe por ID
-    $hero = DB::table('heroes')->where('id', $id)->first();
-    
-    // Verificar si existe
-    if (!$hero) {
-        abort(404, 'Héroe no encontrado');
+    public function __construct(string $name, string $power) {
+        $this->name = $name;
+        $this->power = $power;
     }
-    
-    return view('heroes.show', ['hero' => $hero]);
-}
-```
 
-**Desglose:**
-
-```php
-->where('id', $id)
-```
-Filtra los resultados: "donde la columna `id` sea igual a `$id`".
-
-```php
-->first()
-```
-Devuelve **el primer resultado** que cumpla la condición. Si no hay resultados, devuelve `null`.
-
-```php
-if (!$hero) {
-    abort(404, 'Héroe no encontrado');
-}
-```
-Si no existe, muestra error 404.
-
-### Opción 2: Usando find() (más corto)
-
-El método `find()` es un atajo cuando buscas por clave primaria (ID):
-
-```php
-public function show($id)
-{
-    $hero = DB::table('heroes')->find($id);
-    
-    if (!$hero) {
-        abort(404, 'Héroe no encontrado');
+    public function getName(): string {
+        return $this->name;
     }
-    
-    return view('heroes.show', ['hero' => $hero]);
+
+    public function setName(string $name): void {
+        $this->name = $name;
+    }
 }
 ```
 
-**Diferencia:**
-- `find($id)` busca por la clave primaria automáticamente
-- Es más corto y claro cuando buscas por ID
+Un modelo Eloquent es diferente porque sigue el patrón **Active Record**: cada instancia del modelo representa un registro de la base de datos y, al mismo tiempo, sabe cómo leer, guardar y eliminar ese registro. No necesitas declarar atributos ni getters/setters porque Eloquent los gestiona de forma dinámica mediante los **métodos mágicos de PHP** (`__get` y `__set`). Cuando escribes `$hero->name`, Eloquent intercepta ese acceso y busca el valor en los datos que recuperó de la base de datos.
 
-### Adaptar la vista show
+Este enfoque responde a una filosofía de Laravel llamada **Convention over Configuration** (convención sobre configuración): en lugar de escribir todo el código repetitivo, describes qué es tu modelo y Laravel se encarga del resto.
 
-Edita `resources/views/heroes/show.blade.php`:
+**La clave está en la herencia.** Al escribir `class Hero extends Model`, tu clase hereda cientos de líneas de código que ya están escritas en la clase `Model` de Laravel.
 
-**Antes (con arrays):**
-```html
-<h1>{{ $hero['name'] }}</h1>
-<div class="info-row">
-    <span class="label">Nombre real:</span>
-    {{ $hero['real_name'] }}
-</div>
-```
+**¿Qué es `Model`?**
 
-**Ahora (con objetos):**
-```html
-<h1>{{ $hero->name }}</h1>
-<div class="info-row">
-    <span class="label">Nombre real:</span>
-    {{ $hero->real_name }}
-</div>
-```
+`Model` (de `Illuminate\Database\Eloquent\Model`) es la clase base que proporciona Laravel. Contiene toda la lógica necesaria para:
 
-Cambia todos los `$hero['campo']` por `$hero->campo` en el archivo.
+- Conectarse a la base de datos y ejecutar consultas
+- Traducir los resultados de SQL en objetos PHP
+- Gestionar los atributos del registro de forma dinámica
+- Manejar automáticamente `created_at` y `updated_at`
+- Convertir tipos de datos (`$casts`)
+- Soportar relaciones entre tablas (próximas fases)
 
-### Probar
+Tu clase `Hero` hereda todo eso. Tú solo defines **qué es específico de un héroe**: qué campos se pueden rellenar, qué tabla usa si no sigue la convención, etc.
 
-Visita:
-- http://localhost:8000/heroes/1 (Iron Man)
-- http://localhost:8000/heroes/2 (Thor)
-- http://localhost:8000/heroes/99 (Error 404)
-
----
-
-## Eliminar el Método getAllHeroes()
-
-Ya no necesitamos el método privado `getAllHeroes()` porque los datos vienen de la BD.
-
-Elimínalo del controlador:
+**Análisis del código generado:**
 
 ```php
-// ❌ ELIMINAR este método
-private function getAllHeroes()
+namespace App\Models;
+```
+- Define que esta clase vive en el namespace `App\Models`
+- Laravel busca los modelos en `app/Models/`
+
+```php
+use Illuminate\Database\Eloquent\Model;
+```
+- Importa la clase `Model` para poder usarla en este archivo
+- Sin este `use`, PHP no sabría de dónde viene `Model`
+
+```php
+class Hero extends Model
+```
+- `Hero` hereda de `Model`
+- A partir de este momento `Hero` tiene acceso a `find()`, `all()`, `create()`, `update()`, `delete()` y muchos más métodos, sin escribir ninguno
+
+```php
 {
-    return [
-        1 => ['id' => 1, 'name' => 'Iron Man', ...],
-        // ...
+    //
+}
+```
+- El cuerpo está vacío porque, con las convenciones de Laravel, no hace falta nada más para empezar a funcionar
+- Aquí es donde añadirás las propiedades de configuración como `$fillable` o `$casts`
+
+### 1.3. Convenciones de Eloquent
+
+Laravel sigue estas reglas automáticas:
+
+| Convención | Ejemplo |
+|------------|---------|
+| **Nombre del modelo** | `Hero` (singular, PascalCase) |
+| **Nombre de la tabla** | `heroes` (plural, minúsculas) |
+| **Clave primaria** | `id` |
+| **Timestamps** | `created_at`, `updated_at` |
+
+**¿Qué significa esto?**
+
+Cuando escribes `Hero::all()`, Laravel automáticamente:
+1. Busca la tabla `heroes` (plural del modelo)
+2. Espera una columna `id` como clave primaria
+3. Espera columnas `created_at` y `updated_at`
+
+**Si tu tabla se llama diferente:**
+
+```php
+class Hero extends Model
+{
+    protected $table = 'mis_heroes'; // Nombre personalizado
+}
+```
+
+**Si no usas timestamps:**
+
+```php
+class Hero extends Model
+{
+    public $timestamps = false;
+}
+```
+
+En nuestro caso, la tabla `heroes` ya sigue las convenciones, así que no necesitamos configurar nada más.
+
+### 1.4. Configurar campos permitidos ($fillable)
+
+Por seguridad, Eloquent no permite asignar valores masivamente sin tu permiso explícito. Debes indicar qué campos se pueden rellenar.
+
+**¿Qué es asignación masiva?**
+
+Es crear o actualizar registros pasando un array:
+
+```php
+Hero::create([
+    'name' => 'Thor',
+    'power' => 'Trueno'
+]);
+```
+
+Sin configurar `$fillable`, obtendrías este error:
+
+```
+MassAssignmentException
+Add [name] to fillable property to allow mass assignment
+```
+
+**Solución:** Añade la propiedad `$fillable` al modelo.
+
+Edita `app/Models/Hero.php`:
+
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Hero extends Model
+{
+    // Campos que se pueden asignar masivamente
+    protected $fillable = [
+        'name',
+        'real_name',
+        'power',
+        'power_level',
+        'team',
+        'bio',
+        'is_active'
     ];
 }
 ```
 
+**Importante:** 
+- NO incluyas `id`, `created_at`, `updated_at` → Se manejan automáticamente
+- Solo lista campos que el usuario puede modificar
+- Esto protege contra ataques de asignación masiva
+
+**Alternativa: $guarded**
+
+En lugar de listar lo que SÍ se puede llenar, puedes listar lo que NO:
+
+```php
+protected $guarded = ['id']; // Protege solo el ID
+```
+
+**Recomendación:** Usa `$fillable` (lista blanca) por mayor seguridad.
+
+### 1.5. Configuraciones adicionales (opcional)
+
+Puedes añadir más configuraciones al modelo:
+
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Hero extends Model
+{
+    // Tabla (si no sigue convenciones)
+    protected $table = 'heroes';
+    
+    // Campos rellenables
+    protected $fillable = [
+        'name',
+        'real_name',
+        'power',
+        'power_level',
+        'team',
+        'bio',
+        'is_active'
+    ];
+    
+    // Convertir tipos automáticamente
+    protected $casts = [
+        'power_level' => 'integer',
+        'is_active' => 'boolean',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime'
+    ];
+}
+```
+
+**¿Qué hace `$casts`?**
+
+Convierte automáticamente los valores de la base de datos al tipo PHP correcto:
+- `'is_active' => 'boolean'` → Convierte 0/1 a `false`/`true`
+- `'power_level' => 'integer'` → Convierte string a número entero
+- `'created_at' => 'datetime'` → Convierte a objeto Carbon (fechas)
+
+**Por ahora, con `$fillable` es suficiente.**
+
 ---
 
-## Controlador Completo con Base de Datos
+## ¿Qué es Eloquent ORM?
 
-Tu `app/Http/Controllers/HeroController.php` debería verse así:
+Ya tienes tu modelo `Hero` creado. Ahora entendamos qué es Eloquent y por qué es mejor que Query Builder.
+
+### Definición
+
+**Eloquent** es el **ORM** (Object-Relational Mapping) de Laravel.
+
+**ORM** = Puente entre tus objetos PHP y las tablas de la base de datos.
+
+En lugar de escribir SQL o usar `DB::table()`, trabajas directamente con **objetos** que representan registros de la base de datos.
+
+### Comparación: Query Builder vs Eloquent
+
+**Query Builder (Fase 3):**
+
+```php
+use Illuminate\Support\Facades\DB;
+
+// Obtener todos los héroes
+$heroes = DB::table('heroes')->get();
+
+// Buscar por ID
+$hero = DB::table('heroes')->find(1);
+
+// Filtrar
+$heroes = DB::table('heroes')->where('team', 'Vengadores')->get();
+
+// Crear nuevo héroe
+DB::table('heroes')->insert([
+    'name' => 'Iron Man',
+    'power' => 'Tecnología',
+    'team' => 'Vengadores'
+]);
+
+// Los resultados son objetos stdClass genéricos
+echo $hero->name; // funciona
+```
+
+**Eloquent (Fase 4):**
+
+```php
+use App\Models\Hero;
+
+// Obtener todos los héroes
+$heroes = Hero::all();
+
+// Buscar por ID
+$hero = Hero::find(1);
+
+// Filtrar
+$heroes = Hero::where('team', 'Vengadores')->get();
+
+// Crear nuevo héroe
+Hero::create([
+    'name' => 'Iron Man',
+    'power' => 'Tecnología',
+    'team' => 'Vengadores'
+]);
+
+// Los resultados son objetos Hero (modelos)
+echo $hero->name; // funciona
+```
+
+### Ventajas de Eloquent
+
+| Query Builder | Eloquent |
+|---------------|----------|
+| `DB::table('heroes')` | `Hero::` (más corto y legible) |
+| Objetos genéricos `stdClass` | Objetos `Hero` con lógica propia |
+| Sin validaciones | Puede incluir validaciones |
+| Sin relaciones | Soporta relaciones (futuro) |
+| Sin métodos personalizados | Métodos personalizados en modelo |
+| Acceso manual a timestamps | Timestamps automáticos |
+
+**En resumen:**
+- **Query Builder:** Más flexible, más SQL-like
+- **Eloquent:** Más elegante, orientado a objetos, más Laravel
+
+---
+
+## Paso 2: Actualizar HeroController para usar Eloquent
+
+Ahora vamos a transformar tu `HeroController` de la Fase 3 para usar el modelo `Hero` en lugar de `DB::table()`.
+
+### 2.1. Cambiar el import
+
+Abre `app/Http/Controllers/HeroController.php`.
+
+**Antes (Fase 3):**
 
 ```php
 <?php
@@ -381,310 +410,59 @@ use Illuminate\Support\Facades\DB;
 
 class HeroController extends Controller
 {
-    public function index()
-    {
-        $heroes = DB::table('heroes')->get();
-        
-        return view('heroes.index', ['heroes' => $heroes]);
-    }
-
-    public function show($id)
-    {
-        $hero = DB::table('heroes')->find($id);
-        
-        if (!$hero) {
-            abort(404, 'Héroe no encontrado');
-        }
-        
-        return view('heroes.show', ['hero' => $hero]);
-    }
+    // ...
 }
 ```
 
-**Cambios principales:**
-1. ✅ Importamos `DB` facade
-2. ✅ Usamos `DB::table('heroes')->get()` para obtener todos
-3. ✅ Usamos `DB::table('heroes')->find($id)` para obtener uno
-4. ✅ Eliminamos arrays hardcodeados
-5. ✅ Mantenemos validación de existencia
-
----
-
-## Más Métodos del Query Builder
-
-### Seleccionar columnas específicas
-
-En lugar de traer todas las columnas:
+**Después (Fase 4):**
 
 ```php
-// Traer solo algunas columnas
-$heroes = DB::table('heroes')
-    ->select('id', 'name', 'power')
-    ->get();
+<?php
 
-// Traer columnas con alias
-$heroes = DB::table('heroes')
-    ->select('name as hero_name', 'power_level')
-    ->get();
-```
+namespace App\Http\Controllers;
 
-### Filtrar resultados
+use Illuminate\Http\Request;
+use App\Models\Hero;  // ← Cambio aquí
 
-```php
-// Héroes con power_level mayor a 8000
-$strongHeroes = DB::table('heroes')
-    ->where('power_level', '>', 8000)
-    ->get();
-
-// Héroes del equipo Vengadores
-$avengers = DB::table('heroes')
-    ->where('team', 'Vengadores')
-    ->get();
-
-// Múltiples condiciones (AND)
-$activeAvengers = DB::table('heroes')
-    ->where('team', 'Vengadores')
-    ->where('is_active', 1)
-    ->get();
-
-// Condición OR
-$heroes = DB::table('heroes')
-    ->where('team', 'Vengadores')
-    ->orWhere('team', 'X-Men')
-    ->get();
-```
-
-### Ordenar resultados
-
-```php
-// Ordenar por poder (ascendente)
-$heroes = DB::table('heroes')
-    ->orderBy('power_level', 'asc')
-    ->get();
-
-// Ordenar por poder (descendente)
-$heroes = DB::table('heroes')
-    ->orderBy('power_level', 'desc')
-    ->get();
-
-// Ordenar por nombre alfabéticamente
-$heroes = DB::table('heroes')
-    ->orderBy('name')
-    ->get();
-```
-
-### Limitar resultados
-
-```php
-// Los 3 héroes más poderosos
-$top3 = DB::table('heroes')
-    ->orderBy('power_level', 'desc')
-    ->limit(3)
-    ->get();
-
-// También se puede usar take()
-$top3 = DB::table('heroes')
-    ->orderBy('power_level', 'desc')
-    ->take(3)
-    ->get();
-```
-
-### Contar registros
-
-```php
-// Contar todos los héroes
-$total = DB::table('heroes')->count();
-
-// Contar héroes activos
-$activos = DB::table('heroes')
-    ->where('is_active', 1)
-    ->count();
-```
-
-### Verificar si existe
-
-```php
-// Verificar si existe un héroe con ID 10
-$existe = DB::table('heroes')->where('id', 10)->exists();
-
-if ($existe) {
-    echo "El héroe existe";
-}
-```
-
----
-
-## Ejemplo: Listar Solo Héroes Activos
-
-Modifica el método `index()` para mostrar solo héroes activos:
-
-```php
-public function index()
+class HeroController extends Controller
 {
-    $heroes = DB::table('heroes')
-        ->where('is_active', 1)
-        ->orderBy('name')
-        ->get();
-    
-    return view('heroes.index', ['heroes' => $heroes]);
+    // ...
 }
 ```
 
----
+**Importante:** Ya NO necesitas `use Illuminate\Support\Facades\DB;`
 
-## Ejemplo: Top 3 Héroes Más Poderosos
+### 2.2. Método index() - Listar todos los héroes
 
-Crea un nuevo método en el controlador:
-
-```php
-public function top()
-{
-    $heroes = DB::table('heroes')
-        ->orderBy('power_level', 'desc')
-        ->limit(3)
-        ->get();
-    
-    return view('heroes.top', ['heroes' => $heroes]);
-}
-```
-
-Agrega la ruta en `routes/web.php`:
-
-```php
-Route::get('/heroes/top', [HeroController::class, 'top'])->name('heroes.top');
-```
-
-**Importante:** Esta ruta debe ir **antes** de `/heroes/{id}` para evitar que Laravel interprete "top" como un ID.
-
-```php
-Route::get('/heroes', [HeroController::class, 'index'])->name('heroes.index');
-Route::get('/heroes/top', [HeroController::class, 'top'])->name('heroes.top');  // ← ANTES
-Route::get('/heroes/{id}', [HeroController::class, 'show'])->name('heroes.show'); // ← DESPUÉS
-```
-
-Crea la vista `resources/views/heroes/top.blade.php` (similar a index pero con título "Top 3 Más Poderosos").
-
----
-
-## Depuración con dd() y dump()
-
-Cuando trabajas con bases de datos, a veces necesitas ver exactamente qué datos estás obteniendo.
-
-### dd() - Die and Dump
-
-Muestra el contenido de una variable y **detiene** la ejecución:
+**Antes (Query Builder):**
 
 ```php
 public function index()
 {
     $heroes = DB::table('heroes')->get();
-    
-    dd($heroes); // ← Muestra $heroes y para aquí
-    
-    return view('heroes.index', ['heroes' => $heroes]); // Nunca llega aquí
+    return view('heroes.index', compact('heroes'));
 }
 ```
 
-**Útil para:** Ver rápidamente qué contiene una variable.
-
-### dump()
-
-Muestra el contenido pero **continúa** la ejecución:
+**Después (Eloquent):**
 
 ```php
 public function index()
 {
-    $heroes = DB::table('heroes')->get();
-    
-    dump($heroes); // ← Muestra $heroes en pantalla
-    
-    return view('heroes.index', ['heroes' => $heroes]); // Sigue ejecutándose
+    $heroes = Hero::all();
+    return view('heroes.index', compact('heroes'));
 }
 ```
 
-**Útil para:** Ver múltiples variables sin detener el flujo.
+**Cambios:**
+- `DB::table('heroes')->get()` → `Hero::all()`
+- Más corto y semántico
 
-### Ver la consulta SQL generada
+### 2.3. Método show() - Mostrar detalle de un héroe
 
-Para ver el SQL que Laravel está ejecutando:
-
-```php
-public function index()
-{
-    $heroes = DB::table('heroes')
-        ->where('power_level', '>', 8000)
-        ->get();
-    
-    // Ver SQL generado
-    $query = DB::table('heroes')
-        ->where('power_level', '>', 8000)
-        ->toSql();
-    
-    dd($query); // Muestra: "select * from `heroes` where `power_level` > ?"
-}
-```
-
----
-
-## Objetos vs Arrays
-
-Los resultados de `DB::table()->find()` devuelve **un objeto**, no arrays.
-
-**Acceso con objetos:**
-```php
-$hero = DB::table('heroes')->find(1);
-echo $hero->name;        // ✅ Correcto
-echo $hero['name'];      // ❌ Error
-```
-
-**Si necesitas convertir a array:**
+**Antes (Query Builder):**
 
 ```php
-// Un objeto a array
-$hero = DB::table('heroes')->find(1);
-$heroArray = (array) $hero;
-echo $heroArray['name']; // ✅ Ahora funciona
-
-// Colección de objetos a array
-$heroes = DB::table('heroes')->get();
-$heroesArray = $heroes->toArray();
-```
-
-**Recomendación:** Usa objetos. Es la forma estándar de Laravel y más eficiente.
-
----
-
-## Diferencias: Query Builder vs Eloquent
-
-**Query Builder (lo que usamos ahora):**
-- ✅ Consultas SQL con sintaxis PHP
-- ✅ Más control sobre las consultas
-- ✅ Resultados como objetos genéricos
-- ❌ No tiene relaciones automáticas
-- ❌ No tiene eventos (creating, updating, etc.)
-
-**Eloquent (lo verás en Fase 4):**
-- ✅ Modelos que representan tablas
-- ✅ Relaciones automáticas (belongsTo, hasMany)
-- ✅ Eventos y validaciones
-- ✅ Más expresivo y legible
-- ❌ Ligeramente menos eficiente (negligible)
-
-**¿Cuándo usar cada uno?**
-
-- **Query Builder:** Consultas complejas, reportes, operaciones masivas
-- **Eloquent:** CRUD normal, aplicaciones con relaciones entre tablas
-
-**En este curso:** Fase 3 usa Query Builder, Fase 4 introducirá Eloquent para simplificar el código.
-
----
-
-## Buenas Prácticas
-
-### 1. Siempre validar existencia
-
-```php
-// ✅ BIEN - Verifica antes de usar
 public function show($id)
 {
     $hero = DB::table('heroes')->find($id);
@@ -693,563 +471,665 @@ public function show($id)
         abort(404);
     }
     
-    return view('heroes.show', ['hero' => $hero]);
-}
-
-// ❌ MAL - Puede causar errores si no existe
-public function show($id)
-{
-    $hero = DB::table('heroes')->find($id);
-    return view('heroes.show', ['hero' => $hero]); // Si $hero es null, da error
+    return view('heroes.show', compact('hero'));
 }
 ```
 
-### 2. No traer datos innecesarios
-
-```php
-// ❌ MAL - Trae todas las columnas aunque no las uses
-$heroes = DB::table('heroes')->get();
-
-// ✅ BIEN - Solo trae lo necesario
-$heroes = DB::table('heroes')
-    ->select('id', 'name', 'power')
-    ->get();
-```
-
-### 3. Usar métodos específicos
-
-```php
-// ❌ Menos claro
-$hero = DB::table('heroes')->where('id', $id)->first();
-
-// ✅ Más claro cuando buscas por ID
-$hero = DB::table('heroes')->find($id);
-```
-
-### 4. Ordenar resultados
-
-```php
-// ✅ BIEN - Orden predecible
-$heroes = DB::table('heroes')
-    ->orderBy('name')
-    ->get();
-
-// ❌ Orden aleatorio (depende de la BD)
-$heroes = DB::table('heroes')->get();
-```
-
-### 5. No hacer consultas en vistas
-
-```php
-<!-- ❌ MAL - Consulta en la vista -->
-@foreach(DB::table('heroes')->get() as $hero)
-    ...
-@endforeach
-
-<!-- ✅ BIEN - Consulta en el controlador -->
-// En el controlador:
-$heroes = DB::table('heroes')->get();
-return view('index', ['heroes' => $heroes]);
-
-// En la vista:
-@foreach($heroes as $hero)
-    ...
-@endforeach
-```
-
----
-
-## Resumen de la Fase 3
-
-En esta fase has aprendido:
-
-✅ **¿Qué es una base de datos relacional?** - Tablas, columnas, filas
-
-✅ **Verificar conexión** - Configuración en `.env` y pruebas con Tinker
-
-✅ **Query Builder** - Herramienta para construir consultas SQL seguras
-
-✅ **DB facade** - Acceso simplificado al Query Builder
-
-✅ **Consultas básicas** - `get()`, `find()`, `first()`, `where()`
-
-✅ **Modificar controladores** - Reemplazar arrays por consultas a BD
-
-✅ **Adaptar vistas** - Objetos en lugar de arrays (`$hero->campo`)
-
-✅ **Métodos útiles** - `select()`, `orderBy()`, `limit()`, `count()`
-
-✅ **Depuración** - `dd()`, `dump()`, `toSql()`
-
-✅ **Buenas prácticas** - Validación, eficiencia, orden
-
-**En la próxima fase** aprenderás sobre **Eloquent ORM**, que simplifica aún más el trabajo con bases de datos usando modelos.
-
----
-
-## Resolución de Problemas Comunes
-
-### Error: "SQLSTATE[HY000] [1045] Access denied"
-
-**Causa:** Credenciales incorrectas en `.env`.
-
-**Solución:**
-
-1. Verifica usuario y contraseña en `.env`:
-   ```env
-   DB_USERNAME=root
-   DB_PASSWORD=root
-   ```
-2. Verifica que coincidan con tus credenciales de MySQL en MAMP
-3. Limpia la caché:
-   ```bash
-   php artisan config:clear
-   ```
-
-### Error: "SQLSTATE[HY000] [2002] Connection refused"
-
-**Causa:** MySQL no está corriendo o está en un puerto diferente.
-
-**Solución:**
-
-1. Abre MAMP PRO y verifica que MySQL esté corriendo (luz verde)
-2. Verifica el puerto en MAMP PRO (debería ser 3306)
-3. Si el puerto es diferente, actualiza `.env`:
-   ```env
-   DB_PORT=8889  # O el puerto que uses
-   ```
-
-### Error: "Base table or view not found: 1146 Table 'marvel_hub.heroes' doesn't exist"
-
-**Causa:** La tabla no existe en la base de datos.
-
-**Solución:**
-
-1. Abre phpMyAdmin (http://localhost/phpMyAdmin)
-2. Selecciona la BD `marvel_hub`
-3. Verifica que existe la tabla `heroes`
-4. Si no existe, ejecuta de nuevo los scripts SQL de la Fase 0
-
-### Error: "Trying to get property 'name' of non-object"
-
-**Causa:** Intentas acceder a propiedades de `$hero` pero es `null` (no existe).
-
-**Solución:**
-
-Añade validación antes de usar el objeto:
+**Después (Eloquent):**
 
 ```php
 public function show($id)
 {
-    $hero = DB::table('heroes')->find($id);
+    $hero = Hero::findOrFail($id);
+    return view('heroes.show', compact('hero'));
+}
+```
+
+**Cambios:**
+- `DB::table('heroes')->find($id)` → `Hero::findOrFail($id)`
+- Ya NO necesitas el `if (!$hero)` → `findOrFail()` lanza 404 automáticamente
+
+### 2.4. Método active() - Héroes activos
+
+**Antes (Query Builder):**
+
+```php
+public function active()
+{
+    $heroes = DB::table('heroes')
+        ->where('is_active', 1)
+        ->get();
     
-    // ✅ Añade esta validación
-    if (!$hero) {
-        abort(404, 'Héroe no encontrado');
+    return view('heroes.active', compact('heroes'));
+}
+```
+
+**Después (Eloquent):**
+
+```php
+public function active()
+{
+    $heroes = Hero::where('is_active', true)->get();
+    return view('heroes.active', compact('heroes'));
+}
+```
+
+**Cambios:**
+- `DB::table('heroes')` → `Hero::`
+- `->where('is_active', 1)` → `->where('is_active', true)`
+  - Gracias a `$casts`, puedes usar booleanos directamente
+
+### 2.5. Método powerful() - Héroes poderosos
+
+**Antes (Query Builder):**
+
+```php
+public function powerful()
+{
+    $heroes = DB::table('heroes')
+        ->where('power_level', '>', 8000)
+        ->orderBy('power_level', 'desc')
+        ->get();
+    
+    return view('heroes.powerful', compact('heroes'));
+}
+```
+
+**Después (Eloquent):**
+
+```php
+public function powerful()
+{
+    $heroes = Hero::where('power_level', '>', 8000)
+        ->orderBy('power_level', 'desc')
+        ->get();
+    
+    return view('heroes.powerful', compact('heroes'));
+}
+```
+
+**Cambios:**
+- `DB::table('heroes')` → `Hero::`
+- El resto es idéntico (Eloquent usa los mismos métodos de Query Builder)
+
+### 2.6. Método team() - Héroes por equipo
+
+**Antes (Query Builder):**
+
+```php
+public function team($team)
+{
+    $heroes = DB::table('heroes')
+        ->where('team', $team)
+        ->get();
+    
+    return view('heroes.team', compact('heroes', 'team'));
+}
+```
+
+**Después (Eloquent):**
+
+```php
+public function team($team)
+{
+    $heroes = Hero::where('team', $team)->get();
+    return view('heroes.team', compact('heroes', 'team'));
+}
+```
+
+**Cambios:**
+- `DB::table('heroes')` → `Hero::`
+
+### 2.7. HeroController completo con Eloquent
+
+```php
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\Hero;
+
+class HeroController extends Controller
+{
+    // Listar todos los héroes
+    public function index()
+    {
+        $heroes = Hero::all();
+        return view('heroes.index', compact('heroes'));
     }
     
-    return view('heroes.show', ['hero' => $hero]);
+    // Mostrar detalle de un héroe
+    public function show($id)
+    {
+        $hero = Hero::findOrFail($id);
+        return view('heroes.show', compact('hero'));
+    }
+    
+    // Héroes activos
+    public function active()
+    {
+        $heroes = Hero::where('is_active', true)->get();
+        return view('heroes.active', compact('heroes'));
+    }
+    
+    // Héroes poderosos (power_level > 8000)
+    public function powerful()
+    {
+        $heroes = Hero::where('power_level', '>', 8000)
+            ->orderBy('power_level', 'desc')
+            ->get();
+        
+        return view('heroes.powerful', compact('heroes'));
+    }
+    
+    // Héroes por equipo
+    public function team($team)
+    {
+        $heroes = Hero::where('team', $team)->get();
+        return view('heroes.team', compact('heroes', 'team'));
+    }
 }
 ```
 
-### No se ven los cambios después de modificar .env
+### 2.8. Probar los cambios
 
-**Solución:**
+**No necesitas modificar:**
+- ✅ Las rutas (`routes/web.php`)
+- ✅ Las vistas (`resources/views/heroes/`)
+- ✅ La base de datos
 
-Laravel cachea la configuración. Limpia la caché:
+**Solo cambiaste:**
+- ✅ Creaste el modelo `Hero`
+- ✅ Actualizaste el controlador para usar `Hero::` en lugar de `DB::table()`
+
+**Prueba tu aplicación:**
+
+```bash
+php artisan serve
+```
+
+Accede a:
+- `http://localhost:8000/heroes` → Debe funcionar igual
+- `http://localhost:8000/heroes/1` → Debe mostrar detalle
+- `http://localhost:8000/heroes/activos` → Debe funcionar
+
+**Si todo funciona, ¡felicidades!** Has migrado de Query Builder a Eloquent.
+
+---
+
+## Métodos Eloquent más comunes
+
+Ahora que tienes tu modelo funcionando, veamos los métodos más útiles de Eloquent.
+
+### Consultar datos
+
+```php
+// Todos los registros
+$heroes = Hero::all();
+
+// Primer registro
+$hero = Hero::first();
+
+// Buscar por ID
+$hero = Hero::find(1);
+
+// Buscar por ID o error 404
+$hero = Hero::findOrFail(1);
+
+// Con condiciones
+$heroes = Hero::where('team', 'Vengadores')->get();
+$heroes = Hero::where('power_level', '>', 8000)->get();
+
+// Primera coincidencia con condición
+$hero = Hero::where('name', 'Thor')->first();
+
+// Primera coincidencia o error 404
+$hero = Hero::where('name', 'Thor')->firstOrFail();
+
+// Ordenar
+$heroes = Hero::orderBy('power_level', 'desc')->get();
+
+// Limitar resultados
+$heroes = Hero::orderBy('power_level', 'desc')->limit(3)->get();
+
+// Contar
+$total = Hero::count();
+$totalActivos = Hero::where('is_active', true)->count();
+```
+
+### Crear registros
+
+```php
+// Forma 1: create() - Asignación masiva
+$hero = Hero::create([
+    'name' => 'Iron Man',
+    'real_name' => 'Tony Stark',
+    'power' => 'Tecnología',
+    'power_level' => 8500,
+    'team' => 'Vengadores',
+    'bio' => 'Genio, millonario, playboy, filántropo',
+    'is_active' => true
+]);
+
+// Forma 2: new + save()
+$hero = new Hero();
+$hero->name = 'Captain America';
+$hero->real_name = 'Steve Rogers';
+$hero->power = 'Super soldado';
+$hero->power_level = 8000;
+$hero->team = 'Vengadores';
+$hero->bio = 'El primer Vengador';
+$hero->is_active = true;
+$hero->save();
+```
+
+### Actualizar registros
+
+```php
+// Forma 1: Buscar y actualizar
+$hero = Hero::find(1);
+$hero->power_level = 9000;
+$hero->save();
+
+// Forma 2: update() - Asignación masiva
+$hero = Hero::find(1);
+$hero->update([
+    'power_level' => 9000,
+    'bio' => 'Nueva biografía'
+]);
+
+// Forma 3: where()->update() - Actualizar múltiples
+Hero::where('team', 'Vengadores')
+    ->update(['is_active' => true]);
+```
+
+### Eliminar registros
+
+```php
+// Buscar y eliminar
+$hero = Hero::find(1);
+$hero->delete();
+
+// Eliminar por ID
+Hero::destroy(1);
+
+// Eliminar múltiples IDs
+Hero::destroy([1, 2, 3]);
+
+// Eliminar con condición
+Hero::where('power_level', '<', 1000)->delete();
+```
+
+---
+
+## Diferencias clave: Query Builder vs Eloquent
+
+### Métodos terminales
+
+Ambos comparten muchos métodos, pero hay diferencias:
+
+| Query Builder | Eloquent | Diferencia |
+|--------------|----------|----------|
+| `->get()` | `->get()` o `::all()` | Eloquent tiene `all()` |
+| `->find($id)` | `::find($id)` | Sintaxis distinta |
+| NO existe | `::findOrFail($id)` | Solo Eloquent |
+| `->first()` | `->first()` | Igual |
+| NO existe | `->firstOrFail()` | Solo Eloquent |
+
+### Creación de registros
+
+| Query Builder | Eloquent |
+|--------------|----------|
+| `DB::table('heroes')->insert([...])` | `Hero::create([...])` |
+| NO retorna el objeto creado | Retorna el modelo creado |
+
+### Actualización
+
+| Query Builder | Eloquent |
+|--------------|----------|
+| `DB::table('heroes')->where(...)->update([...])` | `$hero->update([...])` |
+| Actualiza múltiples siempre | Puede actualizar uno o múltiples |
+
+### Objetos retornados
+
+| Query Builder | Eloquent |
+|--------------|----------|
+| Objetos `stdClass` | Objetos `Hero` (modelo) |
+| Sin métodos personalizados | Puede tener métodos personalizados |
+
+---
+
+## Probar con Tinker
+
+Tinker es perfecto para experimentar con Eloquent.
+
+```bash
+php artisan tinker
+```
+
+### Ejemplos:
+
+```php
+// Importar modelo
+use App\Models\Hero;
+
+// Ver todos
+Hero::all();
+
+// Buscar uno
+$hero = Hero::find(1);
+$hero->name;
+$hero->power;
+
+// Crear
+$hero = Hero::create([
+    'name' => 'Black Widow',
+    'real_name' => 'Natasha Romanoff',
+    'power' => 'Espionaje',
+    'power_level' => 7500,
+    'team' => 'Vengadores',
+    'bio' => 'Espía de élite',
+    'is_active' => true
+]);
+
+// Actualizar
+$hero = Hero::find(1);
+$hero->power_level = 9500;
+$hero->save();
+
+// Eliminar
+$hero = Hero::find(5);
+$hero->delete();
+
+// Consultas
+Hero::where('team', 'Vengadores')->count();
+Hero::where('power_level', '>', 8000)->get();
+Hero::orderBy('power_level', 'desc')->first();
+```
+
+---
+
+## Ejercicio Práctico: Sistema de Películas
+
+Ahora que dominas Eloquent con el modelo `Hero`, vamos a crear un sistema independiente para gestionar películas.
+
+### Contexto
+
+Eres desarrollador en una plataforma de streaming. Te piden crear un sistema para mostrar el catálogo de películas clásicas.
+
+**Requisitos del cliente:**
+
+1. Mostrar listado completo de películas
+2. Ver ficha detallada de cada película
+3. Filtrar películas disponibles para ver
+4. Mostrar las mejor valoradas (calificación ≥ 8.5)
+5. Filtrar películas por género
+
+### Datos de ejemplo
+
+Vas a trabajar con estas 10 películas clásicas:
+
+| Título | Director | Año | Género | Duración | Calificación | Disponible |
+|--------|----------|-----|--------|----------|--------------|------------|
+| El Padrino | Francis Ford Coppola | 1972 | Drama | 175 | 9.2 | Sí |
+| Pulp Fiction | Quentin Tarantino | 1994 | Crimen | 154 | 8.9 | Sí |
+| El Caballero Oscuro | Christopher Nolan | 2008 | Acción | 152 | 9.0 | No |
+| 12 Hombres sin Piedad | Sidney Lumet | 1957 | Drama | 96 | 9.0 | Sí |
+| La Lista de Schindler | Steven Spielberg | 1993 | Drama | 195 | 9.0 | Sí |
+| El Señor de los Anillos: El Retorno del Rey | Peter Jackson | 2003 | Fantasía | 201 | 9.0 | No |
+| Forrest Gump | Robert Zemeckis | 1994 | Drama | 142 | 8.8 | Sí |
+| Inception | Christopher Nolan | 2010 | Ciencia Ficción | 148 | 8.8 | Sí |
+| Matrix | Lana Wachowski | 1999 | Ciencia Ficción | 136 | 8.7 | No |
+| Goodfellas | Martin Scorsese | 1990 | Crimen | 145 | 8.7 | Sí |
+
+---
+
+## Tareas a realizar
+
+### Tarea 1: Crear base de datos y tabla
+
+Usa phpMyAdmin para crear la base de datos y tabla.
+
+**Requisitos:**
+- Base de datos: `cine`
+- Tabla: `peliculas`
+- Collation: `utf8mb4_unicode_ci`
+- Campos:
+  - `id` (INT, AUTO_INCREMENT, PRIMARY KEY)
+  - `titulo` (VARCHAR 150)
+  - `director` (VARCHAR 100)
+  - `año` (INT)
+  - `genero` (VARCHAR 50)
+  - `duracion` (INT, minutos)
+  - `sinopsis` (TEXT)
+  - `calificacion` (DECIMAL 3,1)
+  - `disponible` (TINYINT 1, default 1)
+  - `created_at` (TIMESTAMP)
+  - `updated_at` (TIMESTAMP)
+
+Inserta las 10 películas de la tabla anterior.
+
+### Tarea 2: Configurar Laravel para la base de datos
+
+Edita el archivo `.env`:
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=cine
+DB_USERNAME=root
+DB_PASSWORD=root
+DB_COLLATION=utf8mb4_unicode_ci
+```
+
+Limpia la caché:
 
 ```bash
 php artisan config:clear
-php artisan cache:clear
 ```
 
-### Error: "Call to undefined method"
+### Tarea 3: Crear el modelo Movie
 
-**Causa:** Olvidaste importar `DB`.
+Crea el modelo con Artisan y configúralo correctamente.
 
-**Solución:**
+**Requisitos:**
+- Nombre del modelo: `Movie`
+- Ubicación: `app/Models/Movie.php`
+- Configurar `$table` si es necesario
+- Configurar `$fillable` con todos los campos
+- Configurar `$casts` para tipos correctos
 
-Añade al principio del controlador:
+### Tarea 4: Probar con Tinker
+
+Antes de crear el controlador, verifica que el modelo funciona.
+
+```bash
+php artisan tinker
+```
+
+Prueba:
+- Obtener todas las películas
+- Buscar una película por ID
+- Filtrar por género
+- Contar películas disponibles
+
+### Tarea 5: Crear MovieController
+
+Crea el controlador con 5 métodos:
+
+1. `index()` - Listar todas las películas
+2. `show($id)` - Mostrar detalle de una película
+3. `disponibles()` - Películas disponibles
+4. `mejores()` - Películas con calificación ≥ 8.5
+5. `genero($genero)` - Películas por género
+
+### Tarea 6: Crear las rutas
+
+Define las rutas en `routes/web.php`:
+
+```
+GET /peliculas → index()
+GET /peliculas/{id} → show()
+GET /peliculas/disponibles → disponibles()
+GET /peliculas/mejores → mejores()
+GET /peliculas/genero/{genero} → genero()
+```
+
+### Tarea 7: Crear las vistas
+
+Crea vistas Blade en `resources/views/peliculas/`:
+
+1. `index.blade.php` - Tarjetas con todas las películas
+2. `show.blade.php` - Ficha detallada
+3. `disponibles.blade.php` - Solo disponibles
+4. `mejores.blade.php` - Mejor valoradas
+5. `genero.blade.php` - Por género
+
+Incluye en las vistas:
+- Título, director, año
+- Género y duración
+- Calificación con estrellas o badge
+- Indicador visual si está disponible
+- Enlaces entre vistas
+
+---
+
+## Pistas y recordatorios
+
+### Sobre el Modelo
 
 ```php
-use Illuminate\Support\Facades\DB;
+class Movie extends Model
+{
+    protected $table = 'peliculas'; // Si no sigue convención
+    
+    protected $fillable = [
+        'titulo',
+        'director',
+        'año',
+        // ... resto de campos
+    ];
+    
+    protected $casts = [
+        'año' => 'integer',
+        'duracion' => 'integer',
+        'calificacion' => 'decimal:1',
+        'disponible' => 'boolean'
+    ];
+}
 ```
-
----
-
-## Recursos Adicionales
-
-**Documentación oficial de Laravel:**
-- Query Builder: https://laravel.com/docs/11.x/queries
-- Database: https://laravel.com/docs/11.x/database
-
-**Próximos pasos:**
-- Fase 4: Eloquent ORM y Modelos
-- Fase 5: Layout con @extends y @section
-- Fase 6: Ver detalle de héroe
-- Fase 7: Crear nuevo héroe (formularios)
-
----
-
-## Ejercicio Práctico: Tienda de Productos
-
-Ahora que dominas Query Builder, es momento de poner en práctica todo lo aprendido creando un sistema completo desde cero.
-
----
-
-## 🎯 ENUNCIADO DEL PROBLEMA
-
-Debes crear un catálogo de productos para una tienda online que permita:
-
-1. **Listar todos los productos** con información básica
-2. **Ver detalle completo** de cada producto
-3. **Filtrar productos destacados** (los más recomendados)
-4. **Filtrar productos económicos** (menores a 100€)
-5. **Filtrar por categoría** (Informática, Audio, etc.)
-
-El sistema debe usar **Query Builder** (`DB::table()`) para todas las consultas a la base de datos.
-
----
-
-## 📋 REQUISITOS TÉCNICOS
-
-### Base de Datos
-
-**Nombre:** `tienda`
-**Tabla:** `productos`
-
-**Estructura de la tabla:**
-
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| `id` | INT | Identificador único |
-| `nombre` | VARCHAR(150) | Nombre del producto |
-| `descripcion` | TEXT | Descripción del producto |
-| `precio` | DECIMAL(10,2) | Precio en euros |
-| `stock` | INT | Unidades disponibles |
-| `categoria` | VARCHAR(50) | Categoría (Informática, Audio, etc.) |
-| `marca` | VARCHAR(50) | Marca del producto |
-| `destacado` | TINYINT(1) | 1 = destacado, 0 = normal |
-| `created_at` | TIMESTAMP | Fecha de creación |
-| `updated_at` | TIMESTAMP | Fecha de actualización |
-
-**Datos mínimos:** 10 productos de ejemplo con diferentes categorías y precios.
-
-### Controlador
-
-**Nombre:** `ProductoController`
-
-**Métodos requeridos:**
-
-1. `index()` - Listar todos los productos ordenados por nombre
-2. `show($id)` - Mostrar detalle de un producto específico
-3. `destacados()` - Listar solo productos destacados
-4. `economicos()` - Listar productos con precio < 100€
-5. `porCategoria($categoria)` - Listar productos de una categoría
-
-### Rutas
-
-**Rutas necesarias:**
-
-- `/productos` → listado completo
-- `/productos/destacados` → solo destacados
-- `/productos/economicos` → solo económicos
-- `/productos/categoria/{categoria}` → filtrado por categoría
-- `/productos/{id}` → detalle de producto
-
-**⚠️ Importante:** El orden de las rutas importa para evitar conflictos.
-
-### Vistas
-
-**Carpeta:** `resources/views/productos/`
-
-**Archivos necesarios:**
-
-1. `index.blade.php` - Listado general
-2. `show.blade.php` - Detalle del producto
-3. `destacados.blade.php` - Productos destacados
-4. `economicos.blade.php` - Productos económicos
-5. `categoria.blade.php` - Productos por categoría
-
----
-
-## ✏️ TAREAS A REALIZAR
-
-### Tarea 1: Preparar la Base de Datos
-
-**1.1** Abre phpMyAdmin y crea la base de datos `tienda` con collation `utf8mb4_unicode_ci`
-
-**1.2** Crea la tabla `productos` con todos los campos especificados arriba
-
-**1.3** Inserta al menos 10 productos de ejemplo:
-- Mínimo 3 productos destacados
-- Mínimo 3 productos económicos (< 100€)
-- Al menos 3 categorías diferentes (Informática, Audio, Periféricos, etc.)
-- Variedad de precios, marcas y stock
-
-**1.4** Verifica los datos ejecutando: `SELECT * FROM productos;`
-
-### Tarea 2: Configurar Conexión
-
-**2.1** Si usas un proyecto separado, edita `.env` con los datos de conexión a la BD `tienda`
-
-**2.2** Si usas el proyecto `marvel-hub`, puedes cambiar temporalmente la BD en `.env`
-
-**2.3** No olvides añadir las líneas de collation:
-```env
-DB_COLLATION=utf8mb4_unicode_ci
-DB_CHARSET=utf8mb4
-```
-
-**2.4** Limpia la caché de configuración
-
-### Tarea 3: Probar con Tinker
-
-Antes de escribir código, verifica que la conexión funciona:
-
-**3.1** Abre Tinker
-
-**3.2** Ejecuta estas consultas de prueba:
-- Contar todos los productos
-- Obtener el primer producto
-- Listar productos destacados
-- Listar productos con precio < 100
-- Listar productos de una categoría específica
-
-**3.3** Si alguna consulta falla, revisa la configuración antes de continuar
-
-### Tarea 4: Crear el Controlador
-
-**4.1** Usa Artisan para generar `ProductoController`
-
-**4.2** Importa la facade `DB` en el controlador
-
-**4.3** Implementa el método `index()`:
-- Obtener todos los productos
-- Ordenarlos alfabéticamente por nombre
-- Pasar los datos a la vista `productos.index`
-
-**4.4** Implementa el método `show($id)`:
-- Buscar el producto por ID
-- Si no existe, lanzar error 404
-- Pasar el producto a la vista `productos.show`
-
-**4.5** Implementa el método `destacados()`:
-- Filtrar productos donde `destacado = 1`
-- Ordenar por precio descendente
-- Pasar a la vista `productos.destacados`
-
-**4.6** Implementa el método `economicos()`:
-- Filtrar productos con precio menor a 100
-- Ordenar por precio ascendente
-- Pasar a la vista `productos.economicos`
-
-**4.7** Implementa el método `porCategoria($categoria)`:
-- Filtrar productos de esa categoría
-- Ordenar por precio ascendente
-- Pasar productos, categoría y total a la vista
-
-### Tarea 5: Crear las Rutas
-
-**5.1** Abre `routes/web.php`
-
-**5.2** Importa el `ProductoController`
-
-**5.3** Define las 5 rutas necesarias con nombres (usa `->name()`)
-
-**5.4** Recuerda: las rutas específicas deben ir ANTES de las rutas con parámetros
-
-### Tarea 6: Crear las Vistas
-
-**6.1** Crea la carpeta `resources/views/productos/`
-
-**6.2** Crea `index.blade.php`:
-- Mostrar título y contador de productos
-- Botones de filtro (Todos, Destacados, Económicos, categorías)
-- Grid de tarjetas con: nombre, marca, género, precio, stock
-- Badge si es destacado
-- Cada tarjeta debe ser un enlace al detalle
-- Diseño atractivo con CSS
-
-**6.3** Crea `show.blade.php`:
-- Mostrar toda la información del producto
-- Precio destacado visualmente
-- Grid con: categoría, stock, código, fecha de registro
-- Sinopsis o descripción
-- Enlace para volver al catálogo
-
-**6.4** Crea `destacados.blade.php`:
-- Similar a index pero con diseño especial para destacados
-- Mostrar contador de productos destacados
-- Color/diseño diferente al listado normal
-
-**6.5** Crea `economicos.blade.php`:
-- Similar a index pero con diseño orientado a ofertas
-- Mostrar "productos por menos de 100€"
-- Énfasis visual en el precio
-
-**6.6** Crea `categoria.blade.php`:
-- Mostrar el nombre de la categoría
-- Contador de productos en esa categoría
-- Listado de productos
-- Manejo de categorías vacías con `@forelse`
-
-### Tarea 7: Probar el Sistema
-
-**7.1** Inicia el servidor con Artisan
-
-**7.2** Verifica cada ruta en el navegador:
-- `/productos` - ¿Se ven todos los productos?
-- `/productos/destacados` - ¿Solo muestra destacados?
-- `/productos/economicos` - ¿Solo productos < 100€?
-- `/productos/categoria/Audio` - ¿Filtra correctamente?
-- `/productos/1` - ¿Muestra el detalle?
-- `/productos/999` - ¿Muestra error 404?
-
-**7.3** Verifica las rutas definidas con: `php artisan route:list --name=productos`
-
-**7.4** Comprueba que todos los enlaces funcionan (especialmente los botones de filtro)
-
----
-
-## 💡 PISTAS Y RECORDATORIOS
-
-### Sobre Query Builder
-
-```php
-// Estructura básica
-DB::table('nombre_tabla')
-    ->where('campo', 'valor')
-    ->orderBy('campo', 'asc')
-    ->get();
-```
-
-**Métodos clave que necesitarás:**
-
-- `get()` - Obtener todos los resultados
-- `find($id)` - Buscar por ID
-- `where('campo', 'valor')` - Filtrar
-- `where('campo', '<', 100)` - Comparaciones
-- `orderBy('campo', 'asc')` - Ordenar
-- `count()` - Contar registros
 
 ### Sobre el Controlador
 
 ```php
-// Importar DB
-use Illuminate\Support\Facades\DB;
+use App\Models\Movie;
 
-// Estructura de método
-public function nombreMetodo($parametro)
+public function index()
 {
-    $datos = DB::table('productos')->where(...)->get();
-    return view('vista', ['datos' => $datos]);
+    $peliculas = Movie::all();
+    return view('peliculas.index', compact('peliculas'));
 }
 
-// Manejo de errores 404
-$producto = DB::table('productos')->find($id);
-if (!$producto) {
-    abort(404, 'Producto no encontrado');
+public function show($id)
+{
+    $pelicula = Movie::findOrFail($id);
+    return view('peliculas.show', compact('pelicula'));
 }
-```
 
-### Sobre las Vistas
-
-```php
-// Usar datos de objetos (no arrays)
-{{ $producto->nombre }}
-{{ $producto->precio }}
-
-// Directivas útiles
-@foreach($productos as $producto)
-    ...
-@endforeach
-
-@if($producto->destacado)
-    <span>⭐ Destacado</span>
-@endif
-
-@forelse($productos as $producto)
-    ...
-@empty
-    <p>No hay productos</p>
-@endforelse
+public function mejores()
+{
+    $peliculas = Movie::where('calificacion', '>=', 8.5)
+        ->orderBy('calificacion', 'desc')
+        ->get();
+    
+    return view('peliculas.mejores', compact('peliculas'));
+}
 ```
 
 ### Sobre las Rutas
 
 ```php
-// Importar controlador
-use App\Http\Controllers\ProductoController;
+use App\Http\Controllers\MovieController;
 
-// Definir ruta
-Route::get('/ruta', [ProductoController::class, 'metodo'])->name('nombre.ruta');
+Route::get('/peliculas', [MovieController::class, 'index'])->name('peliculas.index');
+Route::get('/peliculas/{id}', [MovieController::class, 'show'])->name('peliculas.show');
+// ... resto de rutas
+```
 
-// Usar en vistas
-<a href="{{ route('nombre.ruta') }}">Enlace</a>
-<a href="{{ route('nombre.ruta', $id) }}">Con parámetro</a>
+### Sobre las Vistas
+
+```blade
+@foreach($peliculas as $pelicula)
+    <div class="pelicula">
+        <h3>{{ $pelicula->titulo }}</h3>
+        <p>Director: {{ $pelicula->director }}</p>
+        <p>Año: {{ $pelicula->año }}</p>
+        <p>Calificación: {{ $pelicula->calificacion }}/10</p>
+        
+        @if($pelicula->disponible)
+            <span class="badge disponible">Disponible</span>
+        @else
+            <span class="badge no-disponible">No disponible</span>
+        @endif
+        
+        <a href="{{ route('peliculas.show', $pelicula->id) }}">Ver detalles</a>
+    </div>
+@endforeach
 ```
 
 ---
 
-## ✅ VERIFICACIÓN
+## Verificación
 
-Antes de consultar las soluciones, comprueba que:
+Antes de consultar las soluciones, verifica:
 
-- [ ] La base de datos `tienda` existe con 10 productos
-- [ ] Tinker muestra productos correctamente
-- [ ] El controlador se creó con `php artisan make:controller`
-- [ ] Todas las rutas están definidas con nombres
-- [ ] La carpeta `productos/` existe en `resources/views/`
-- [ ] La vista de listado muestra todos los productos
-- [ ] La vista de detalle muestra información completa
-- [ ] El filtro de destacados funciona
-- [ ] El filtro de económicos funciona
-- [ ] El filtro por categoría funciona
-- [ ] Los enlaces entre vistas funcionan
-- [ ] Acceder a ID inexistente muestra error 404
-- [ ] El diseño es atractivo y funcional
+- [ ] Base de datos `cine` creada con 10 películas
+- [ ] Archivo `.env` configurado correctamente
+- [ ] Modelo `Movie` creado con `$fillable` y `$casts`
+- [ ] Tinker muestra películas correctamente
+- [ ] `MovieController` con 5 métodos funcionales
+- [ ] 5 rutas definidas y nombradas
+- [ ] 5 vistas creadas con Blade
+- [ ] Al acceder a `/peliculas` se muestran todas las películas
+- [ ] Al acceder a `/peliculas/1` se muestra detalle
+- [ ] Filtros de disponibles, mejores y género funcionan
+- [ ] Las vistas tienen enlaces de navegación entre ellas
 
 ---
 
-## 🏆 RETOS ADICIONALES (Opcionales)
+## Reflexión Final
 
-Si terminaste rápido, intenta añadir:
+### Comparación de enfoques
 
-1. **Búsqueda por marca:**
-   - Ruta: `/productos/marca/{marca}`
-   - Método en controlador
-   - Vista correspondiente
+**Fase 2:** Datos en arrays dentro del controlador  
+**Fase 3:** Datos en base de datos con Query Builder  
+**Fase 4:** Datos en base de datos con Eloquent ORM
 
-2. **Productos con stock bajo:**
-   - Filtrar productos con stock < 20
-   - Ordenar por stock ascendente
+**Evolución:**
 
-3. **Estadísticas:**
-   - Total de productos
-   - Precio promedio
-   - Stock total
-   - Producto más caro
+```php
+// Fase 2: Arrays
+$heroes = [
+    ['name' => 'Thor', 'power' => 'Trueno'],
+    // ...
+];
 
-4. **Top 3 más caros:**
-   - Ordenar por precio descendente
-   - Limitar a 3 resultados
-   - Vista especial
+// Fase 3: Query Builder
+$heroes = DB::table('heroes')->get();
 
----
+// Fase 4: Eloquent
+$heroes = Hero::all();
+```
 
-## 📝 NOTA IMPORTANTE
+### Ventajas evidentes de Eloquent
 
-**Las soluciones completas de este ejercicio se encuentran en un documento separado:**
+- ✅ Código más corto y expresivo
+- ✅ Modelos orientados a objetos
+- ✅ Métodos automáticos como `findOrFail()`
+- ✅ Timestamps gestionados automáticamente
+- ✅ Casting de tipos automático
+- ✅ Preparado para relaciones (próximas fases)
 
-📄 **Archivo:** `SolucionPractica.md`
-
-**Recomendación:** Intenta resolver el ejercicio por tu cuenta antes de consultar las soluciones. Usa el checklist de verificación para comprobar tu progreso.
-
-**Si te atascas:**
-1. Revisa las pistas y recordatorios
-2. Consulta la teoría de esta fase
-3. Revisa ejemplos del proyecto Marvel Hub
-4. Solo entonces, consulta la solución específica que necesites
-
-**¡Buena suerte con el ejercicio!** 🚀
+Eloquent no reemplaza Query Builder, ambos conviven en Laravel. Usa Eloquent para la mayoría de casos y Query Builder para consultas muy complejas o específicas.
