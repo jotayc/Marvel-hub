@@ -4,50 +4,59 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-// Importamos la clase DB para realizar consultas a la base de datos
-use Illuminate\Support\Facades\DB;
+
+//Importamos el modelo Hero para poder interactuar con la base de datos
+use App\Models\Hero;
 
 class HeroController extends Controller
 {
 
-    /* *** ELIMINAMOS EL MÉTODO getAllHeroes ***
 
-    /*
-    Cada método tiene un nombre establecido, como index, show, create, store, edit, update y destroy,
-    los cuales se utilizan para manejar las diferentes acciones relacionadas con los recursos (en este caso, los heroes).
-    El método index() es el encargado de mostrar la lista de heroes, en este caso se crea un array de heroes
-    con sus respectivos atributos.
 
-    */
     public function index()
 
-    {   // Obtenemos todos los héroes de la base de datos
-        $heroes = DB::table('heroes')->get();
+    {   // Ahora utilizamos el modelo Hero para obtener todos los héroes de la base de datos
+        //  y pasarlos a la vista en lugar de usar DB::table('heroes') directamente.
+        $heroes = Hero::all();
 
-        return view('heroes.index', ['heroes' => $heroes]);
+        // La función compact() se utiliza para crear un array asociativo con el nombre de la variable
+        //como clave y su valor como valor.
+        //Es equivalente a escribir ['heroes' => $heroes], pero es más conciso y legible.
+        return view('heroes.index', compact('heroes'));
     }
 
-    // El método show() es el encargado de mostrar los detalles de un héroe específico,
-    //en este caso se recibe el id del héroe como parámetro,
+
     public function show($id)
     {
+        // La función findOrFail() intenta encontrar un registro por su ID.
+        //Si no lo encuentra, lanza una excepción que generalmente se traduce
+        //en una página de error 404.
+        $hero = Hero::findOrFail($id);
+        return view('heroes.show', compact('hero'));
+    }
 
-        ///-- OPCION 1 -- ///
+    public function active()
+    {
+        // Aquí utilizamos el modelo Hero para obtener solo los
+        //héroes activos de la base de datos
 
-        //DB::table('heroes') hace referencia a la tabla 'heroes' en la base de datos
-        // where() se utiliza para filtrar los resultados por el campo 'id' igual al valor de $id
-        // El método first() devuelve el primer resultado que coincide con la condición, o null si no se encuentra ningún resultado.
-        $hero = DB::table('heroes')->where('id', $id)->first();
+        //Gracias a $casts en el modelo Hero, Laravel sabe que is_active es un booleano,
+        //así que podemos usar true directamente en la consulta.
+        $heroes = Hero::where('is_active', true)->get();
 
-       ///-- OPCION 2 -- ///
-       // El método find() se utiliza para buscar un registro por su clave primaria
-       //(en este caso, el campo 'id').
-       // $hero = DB::table('heroes')->find($id);
+        //Reutilizamos la misma vista index para mostrar
+        //los héroes activos, ya que la estructura de datos
+        //es la misma.
+        return view('heroes.index', compact('heroes'));
+    }
 
-        if (!$hero) {
-            abort(404, 'Héroe no encontrado');
-        }
-
-        return view('heroes.show', ['hero' => $hero]);
+    public function powerful()
+    {
+        $heroes = Hero::where('power_level', '>', 8500)
+            ->orderBy('power_level', 'desc')
+            ->get();
+        // Aquí también reutilizamos la vista index para mostrar
+        //los héroes más poderosos.
+        return view('heroes.index', compact('heroes'));
     }
 }

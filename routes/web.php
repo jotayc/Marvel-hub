@@ -8,12 +8,13 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// Definimos una ruta para mostrar la lista de heroes, utilizando el método index del HeroController.
+
 Route::get('/heroes', [HeroController::class, 'index'])->name('heroes.index');
 
-// La función name() se utiliza para asignar un nombre a la ruta,
-//lo que facilita su referencia en otras partes de la aplicación, como en las vistas o en redirecciones.
-
-// Definimos una ruta para mostrar los detalles de un héroe específico,
-//utilizando el método show del HeroController y pasando el id del héroe como pará metro.
+//Es importante colocar las rutas específicas (como active y powerful)
+//antes de la ruta general (show),porque Laravel evalúa las rutas en el
+// orden en que están definidas y podría interpretar "active" o "powerful"
+//como un ID si la ruta show está definida antes, lo que causaría un error 404.
+Route::get('/heroes/active', [HeroController::class, 'active'])->name('heroes.active');
+Route::get('/heroes/powerful', [HeroController::class, 'powerful'])->name('heroes.powerful');
 Route::get('/heroes/{id}', [HeroController::class, 'show'])->name('heroes.show');
