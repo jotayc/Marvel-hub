@@ -47,7 +47,7 @@ class HeroController extends Controller
         //Reutilizamos la misma vista index para mostrar
         //los héroes activos, ya que la estructura de datos
         //es la misma.
-        return view('heroes.index', compact('heroes'));
+        return view('heroes.active', compact('heroes'));
     }
 
     public function powerful()

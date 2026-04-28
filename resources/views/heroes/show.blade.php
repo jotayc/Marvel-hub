@@ -1,73 +1,47 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $hero->name }} - Marvel Hub</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 20px;
-        }
-        .hero-detail {
-            border: 2px solid #333;
-            padding: 30px;
-            border-radius: 8px;
-            background: #f5f5f5;
-        }
-        h1 {
-            color: #d32f2f;
-            margin-top: 0;
-        }
-        .info-row {
-            margin: 15px 0;
-            padding: 10px;
-            background: white;
-            border-radius: 4px;
-        }
-        .label {
-            font-weight: bold;
-            color: #555;
-        }
-        .back-link {
-            display: inline-block;
-            margin-top: 20px;
-            color: #1976d2;
-            text-decoration: none;
-        }
-        .back-link:hover {
-            text-decoration: underline;
-        }
-    </style>
-</head>
-<body>
+@extends('layouts.app')
+
+@section('titulo', $hero->name . ' — Marvel Hub')
+
+@section('contenido')
+    <a href="{{ route('heroes.index') }}" class="back-link">&larr; Volver al listado</a>
+
     <div class="hero-detail">
         <h1>{{ $hero->name }}</h1>
 
         <div class="info-row">
-            <span class="label">Nombre real:</span>
-            {{ $hero->real_name }}
+            <span class="label">Nombre real</span>
+            <span class="value">{{ $hero->real_name }}</span>
         </div>
 
         <div class="info-row">
-            <span class="label">Poder:</span>
-            {{ $hero->power }}
+            <span class="label">Poder</span>
+            <span class="value">{{ $hero->power }}</span>
         </div>
 
         <div class="info-row">
-            <span class="label">Nivel de poder:</span>
-            {{ $hero->power_level }}
+            <span class="label">Nivel de poder</span>
+            <span class="value">{{ $hero->power_level }}</span>
         </div>
 
         <div class="info-row">
-            <span class="label">Equipo:</span>
-            {{ $hero->team }}
+            <span class="label">Equipo</span>
+            <span class="value">{{ $hero->team }}</span>
         </div>
 
-        <a href="{{ route('heroes.index') }}" class="back-link">← Volver al listado</a>
+        <div class="info-row">
+            <span class="label">Biografía</span>
+            <span class="value">{{ $hero->bio }}</span>
+        </div>
 
+        <div class="info-row">
+            <span class="label">Estado</span>
+            <span class="value">
+                @if($hero->is_active)
+                    Activo
+                @else
+                    Inactivo
+                @endif
+            </span>
+        </div>
     </div>
-</body>
-</html>
+@endsection

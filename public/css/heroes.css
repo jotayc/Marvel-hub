@@ -1,0 +1,258 @@
+/* public/css/heroes.css */
+
+/* ========================================
+   PALETA DE COLORES MARVEL
+   ======================================== */
+/*
+   #e23636 - Rojo (acento principal)
+   #c42e2e - Rojo oscuro (hover)
+   #1a1a1a - Negro (texto principal)
+   #333333 - Gris oscuro (texto secundario)
+   #f5f5f5 - Gris muy claro (fondos alternativos)
+   #ffffff - Blanco (fondo principal)
+*/
+
+/* ========================================
+   ESTILOS GENERALES
+   ======================================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #ffffff;
+    color: #1a1a1a;
+    min-height: 100vh;
+}
+
+h1 {
+    color: #e23636;
+    text-align: center;
+    font-size: 2.5rem;
+    margin: 30px 0 10px 0;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    font-weight: 800;
+}
+
+h2 {
+    color: #1a1a1a;
+    font-weight: 600;
+}
+
+/* ========================================
+   NAVEGACIÓN
+   ======================================== */
+nav {
+    background-color: #1a1a1a;
+    padding: 15px 30px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    border-bottom: 4px solid #e23636;
+}
+
+nav a {
+    display: inline-block;
+    padding: 9px 22px;
+    background-color: transparent;
+    color: #ffffff;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+nav a:hover {
+    background-color: #e23636;
+    border-color: #e23636;
+    color: #ffffff;
+}
+
+/* ========================================
+   CONTENEDOR PRINCIPAL
+   ======================================== */
+main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 20px 60px 20px;
+}
+
+/* ========================================
+   TARJETAS DE HÉROES (Listado)
+   ======================================== */
+.hero-card {
+    background-color: #ffffff;
+    padding: 25px 30px;
+    margin: 20px 0;
+    border-radius: 10px;
+    border-left: 5px solid #e23636;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+}
+
+.hero-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    border-left-color: #c42e2e;
+}
+
+.hero-card h2 {
+    margin: 0 0 12px 0;
+    color: #e23636;
+    font-size: 1.6rem;
+    font-weight: 700;
+}
+
+.hero-card p {
+    margin: 8px 0;
+    color: #333333;
+    line-height: 1.6;
+    font-size: 1rem;
+}
+
+.hero-card p strong {
+    color: #1a1a1a;
+    font-weight: 700;
+}
+
+.hero-card a {
+    display: inline-block;
+    margin-top: 18px;
+    padding: 10px 24px;
+    background-color: #e23636;
+    color: #ffffff;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: 700;
+    transition: all 0.3s ease;
+}
+
+.hero-card a:hover {
+    background-color: #c42e2e;
+    transform: translateY(-2px);
+}
+
+/* ========================================
+   VISTA DE DETALLE
+   ======================================== */
+.hero-detail {
+    background-color: #ffffff;
+    padding: 40px;
+    border-radius: 10px;
+    border-top: 5px solid #e23636;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin: 30px 0;
+}
+
+.hero-detail h1 {
+    text-align: left;
+    margin: 0 0 30px 0;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #f5f5f5;
+    letter-spacing: 1px;
+}
+
+.info-row {
+    display: flex;
+    padding: 15px 20px;
+    background-color: #f5f5f5;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    border-left: 4px solid #e23636;
+}
+
+.info-row:last-child {
+    margin-bottom: 0;
+}
+
+.label {
+    font-weight: 700;
+    color: #1a1a1a;
+    font-size: 0.9rem;
+    min-width: 150px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.value {
+    color: #333333;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+/* ========================================
+   ENLACES DE NAVEGACIÓN SECUNDARIA
+   ======================================== */
+.back-link {
+    display: inline-block;
+    margin: 20px 0;
+    padding: 10px 24px;
+    background-color: #ffffff;
+    color: #e23636;
+    border: 2px solid #e23636;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: 700;
+    transition: all 0.3s ease;
+}
+
+.back-link:hover {
+    background-color: #e23636;
+    color: #ffffff;
+}
+
+/* ========================================
+   BADGE DE PODER
+   ======================================== */
+.power-badge {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #ffffff;
+    background-color: #e23636;
+    margin-left: 10px;
+}
+
+/* ========================================
+   MENSAJES DE CONFIRMACIÓN
+   ======================================== */
+.alert {
+    background-color: #f0fff4;
+    color: #276749;
+    padding: 14px 20px;
+    border-radius: 6px;
+    border-left: 4px solid #38a169;
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+@media (max-width: 768px) {
+    main {
+        padding: 15px;
+    }
+
+    h1 {
+        font-size: 1.8rem;
+    }
+
+    .hero-card,
+    .hero-detail {
+        padding: 20px;
+    }
+
+    nav {
+        padding: 12px 20px;
+    }
+}
