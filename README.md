@@ -1,1163 +1,654 @@
-# Fase 4: Modelos y Eloquent ORM
+# Fase 5: Layouts y Plantillas Blade
 
 ---
 
 ## De dónde partimos
 
-En la **Fase 3** trabajaste con el proyecto **Marvel Hub** usando **Query Builder** para acceder a la base de datos:
+Hasta la Fase 4 cada vista del proyecto Marvel Hub es un archivo independiente. Si imaginas cómo estarían escritas, todas repiten la misma estructura HTML:
 
-```php
-// HeroController.php (Fase 3)
-use Illuminate\Support\Facades\DB;
+```html
+{{-- resources/views/heroes/index.blade.php --}}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marvel Hub</title>
+    <link rel="stylesheet" href="{{ asset('css/heroes.css') }}">
+</head>
+<body>
+    <nav>
+        <a href="{{ route('heroes.index') }}">Héroes</a>
+    </nav>
 
-public function index()
-{
-    $heroes = DB::table('heroes')->get();
-    return view('heroes.index', ['heroes' => $heroes]);
-}
+    <main>
+        @foreach($heroes as $hero)
+            {{-- Contenido específico de esta vista --}}
+        @endforeach
+    </main>
 
-public function show($id)
-{
-    $hero = DB::table('heroes')->find($id);
-    if (!$hero) {
-        abort(404);
-    }
-    return view('heroes.show', ['hero' => $hero]);
-}
+    <footer>
+        <p>Marvel Hub © 2025</p>
+    </footer>
+</body>
+</html>
 ```
 
-Esta forma funciona perfectamente, pero Laravel ofrece una herramienta más potente y elegante: **Eloquent ORM**.
+```html
+{{-- resources/views/heroes/show.blade.php --}}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marvel Hub</title>
+    <link rel="stylesheet" href="{{ asset('css/heroes.css') }}">
+</head>
+<body>
+    <nav>
+        <a href="{{ route('heroes.index') }}">Héroes</a>
+    </nav>
 
-En esta fase vas a transformar tu proyecto Marvel Hub para usar **modelos Eloquent** en lugar de Query Builder.
+    <main>
+        {{-- Contenido específico de esta vista --}}
+    </main>
+
+    <footer>
+        <p>Marvel Hub © 2025</p>
+    </footer>
+</body>
+</html>
+```
+
+El problema es evidente: `<head>`, `<nav>` y `<footer>` son idénticos en todas las vistas. Cualquier cambio en la navegación o en los estilos obliga a editar cada archivo por separado. Con cinco vistas es incómodo; con veinte, inviable.
+
+En esta fase aprenderás a separar esa estructura HTML compartida en un único archivo llamado **layout**, de modo que cada vista solo contenga lo que la hace diferente del resto.
 
 ---
 
 ## Preparación: Crear una rama nueva
 
-Antes de empezar, vamos a crear una rama nueva en Git para trabajar con Eloquent sin modificar la Fase 3.
-
-**Si estás usando Git:**
-
 ```bash
-# Asegúrate de estar en la rama de la Fase 3
-git checkout 3.AccesoBBDD
+# Asegúrate de estar en la rama de la Fase 4
+git checkout 4.Eloquent
 
 # Crear la nueva rama y cambiar a ella
-git checkout -b 4.Eloquent
+git checkout -b 5.Layouts
 ```
-
-**Si no usas Git:** Puedes continuar directamente modificando el proyecto.
 
 ---
 
-## Paso 1: Crear el Modelo Hero
+## El problema que resuelven los layouts
 
-Un **modelo** es una clase PHP que representa una tabla de la base de datos. Laravel incluye un comando Artisan para crear modelos.
+Cuando un sitio web tiene varias páginas con la misma cabecera, menú y pie de página, el código que construye esa estructura es siempre idéntico. Lo único que cambia de una página a otra es el **contenido principal**: la lista de héroes, el detalle de uno en concreto, los más poderosos. El resto —el `<head>`, la navegación, el footer— es exactamente el mismo.
 
-### 1.1. Generar el modelo
+Un **layout** es la solución a este problema. En lugar de repetir esa estructura en cada vista, se escribe una sola vez en un archivo dedicado, y se marcan los **huecos** donde cada vista insertará su contenido específico. Todas las vistas que usen ese layout heredan automáticamente su estructura.
 
-Abre tu terminal en la raíz del proyecto y ejecuta:
+La analogía es la de una plantilla de carta con membrete: el membrete siempre es el mismo, pero el cuerpo de la carta cambia en cada envío. El layout es el membrete; el contenido de cada vista es el cuerpo.
 
-```bash
-php artisan make:model Hero
-```
+Blade implementa este patrón con directivas que trabajan en pareja:
 
-**Salida esperada:**
+- En el **layout** se declaran huecos con `@yield('nombre')`.
+- En cada **vista** se indica qué layout se usa con `@extends('layouts.app')`, y se rellena cada hueco con `@section('nombre') ... @endsection`.
 
-```
-INFO  Model [app/Models/Hero.php] created successfully.
-```
-
-**¿Dónde se crea?** En `app/Models/Hero.php`
-
-### 1.2. Estructura del modelo generado
-
-Abre el archivo `app/Models/Hero.php` y verás:
-
-```php
-<?php
-
-namespace App\Models;
-
-use Illuminate\Database\Eloquent\Model;
-
-class Hero extends Model
-{
-    //
-}
-```
-
-A primera vista puede llamar la atención que la clase esté prácticamente vacía. Antes de analizar línea por línea, vale la pena entender por qué.
-
-**¿Por qué el modelo no tiene atributos privados ni métodos getters/setters?**
-
-En PHP orientado a objetos clásico estás acostumbrado a clases con esta estructura:
-
-```php
-class Hero {
-    private string $name;
-    private string $power;
-
-    public function __construct(string $name, string $power) {
-        $this->name = $name;
-        $this->power = $power;
-    }
-
-    public function getName(): string {
-        return $this->name;
-    }
-
-    public function setName(string $name): void {
-        $this->name = $name;
-    }
-}
-```
-
-Un modelo Eloquent es diferente porque sigue el patrón **Active Record**: cada instancia del modelo representa un registro de la base de datos y, al mismo tiempo, sabe cómo leer, guardar y eliminar ese registro. No necesitas declarar atributos ni getters/setters porque Eloquent los gestiona de forma dinámica mediante los **métodos mágicos de PHP** (`__get` y `__set`). Cuando escribes `$hero->name`, Eloquent intercepta ese acceso y busca el valor en los datos que recuperó de la base de datos.
-
-Este enfoque responde a una filosofía de Laravel llamada **Convention over Configuration** (convención sobre configuración): en lugar de escribir todo el código repetitivo, describes qué es tu modelo y Laravel se encarga del resto.
-
-**La clave está en la herencia.** Al escribir `class Hero extends Model`, tu clase hereda cientos de líneas de código que ya están escritas en la clase `Model` de Laravel.
-
-**¿Qué es `Model`?**
-
-`Model` (de `Illuminate\Database\Eloquent\Model`) es la clase base que proporciona Laravel. Contiene toda la lógica necesaria para:
-
-- Conectarse a la base de datos y ejecutar consultas
-- Traducir los resultados de SQL en objetos PHP
-- Gestionar los atributos del registro de forma dinámica
-- Manejar automáticamente `created_at` y `updated_at`
-- Convertir tipos de datos (`$casts`)
-- Soportar relaciones entre tablas (próximas fases)
-
-Tu clase `Hero` hereda todo eso. Tú solo defines **qué es específico de un héroe**: qué campos se pueden rellenar, qué tabla usa si no sigue la convención, etc.
-
-**Análisis del código generado:**
-
-```php
-namespace App\Models;
-```
-- Define que esta clase vive en el namespace `App\Models`
-- Laravel busca los modelos en `app/Models/`
-
-```php
-use Illuminate\Database\Eloquent\Model;
-```
-- Importa la clase `Model` para poder usarla en este archivo
-- Sin este `use`, PHP no sabría de dónde viene `Model`
-
-```php
-class Hero extends Model
-```
-- `Hero` hereda de `Model`
-- A partir de este momento `Hero` tiene acceso a `find()`, `all()`, `create()`, `update()`, `delete()` y muchos más métodos, sin escribir ninguno
-
-```php
-{
-    //
-}
-```
-- El cuerpo está vacío porque, con las convenciones de Laravel, no hace falta nada más para empezar a funcionar
-- Aquí es donde añadirás las propiedades de configuración como `$fillable` o `$casts`
-
-### 1.3. Convenciones de Eloquent
-
-Laravel sigue estas reglas automáticas:
-
-| Convención | Ejemplo |
-|------------|---------|
-| **Nombre del modelo** | `Hero` (singular, PascalCase) |
-| **Nombre de la tabla** | `heroes` (plural, minúsculas) |
-| **Clave primaria** | `id` |
-| **Timestamps** | `created_at`, `updated_at` |
-
-**¿Qué significa esto?**
-
-Cuando escribes `Hero::all()`, Laravel automáticamente:
-1. Busca la tabla `heroes` (plural del modelo)
-2. Espera una columna `id` como clave primaria
-3. Espera columnas `created_at` y `updated_at`
-
-**Si tu tabla se llama diferente:**
-
-```php
-class Hero extends Model
-{
-    protected $table = 'mis_heroes'; // Nombre personalizado
-}
-```
-
-**Si no usas timestamps:**
-
-```php
-class Hero extends Model
-{
-    public $timestamps = false;
-}
-```
-
-En nuestro caso, la tabla `heroes` ya sigue las convenciones, así que no necesitamos configurar nada más.
-
-### 1.4. Configurar campos permitidos ($fillable)
-
-Por seguridad, Eloquent no permite asignar valores masivamente sin tu permiso explícito. Debes indicar qué campos se pueden rellenar.
-
-**¿Qué es asignación masiva?**
-
-Es crear o actualizar registros pasando un array:
-
-```php
-Hero::create([
-    'name' => 'Thor',
-    'power' => 'Trueno'
-]);
-```
-
-Sin configurar `$fillable`, obtendrías este error:
-
-```
-MassAssignmentException
-Add [name] to fillable property to allow mass assignment
-```
-
-**Solución:** Añade la propiedad `$fillable` al modelo.
-
-Edita `app/Models/Hero.php`:
-
-```php
-<?php
-
-namespace App\Models;
-
-use Illuminate\Database\Eloquent\Model;
-
-class Hero extends Model
-{
-    // Campos que se pueden asignar masivamente
-    protected $fillable = [
-        'name',
-        'real_name',
-        'power',
-        'power_level',
-        'team',
-        'bio',
-        'is_active'
-    ];
-}
-```
-
-**Importante:** 
-- NO incluyas `id`, `created_at`, `updated_at` → Se manejan automáticamente
-- Solo lista campos que el usuario puede modificar
-- Esto protege contra ataques de asignación masiva
-
-**Alternativa: $guarded**
-
-En lugar de listar lo que SÍ se puede llenar, puedes listar lo que NO:
-
-```php
-protected $guarded = ['id']; // Protege solo el ID
-```
-
-**Recomendación:** Usa `$fillable` (lista blanca) por mayor seguridad.
-
-### 1.5. Configuraciones adicionales (opcional)
-
-Puedes añadir más configuraciones al modelo:
-
-```php
-<?php
-
-namespace App\Models;
-
-use Illuminate\Database\Eloquent\Model;
-
-class Hero extends Model
-{
-    // Tabla (si no sigue convenciones)
-    protected $table = 'heroes';
-    
-    // Campos rellenables
-    protected $fillable = [
-        'name',
-        'real_name',
-        'power',
-        'power_level',
-        'team',
-        'bio',
-        'is_active'
-    ];
-    
-    // Convertir tipos automáticamente
-    protected $casts = [
-        'power_level' => 'integer',
-        'is_active' => 'boolean',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime'
-    ];
-}
-```
-
-**¿Qué hace `$casts`?**
-
-Convierte automáticamente los valores de la base de datos al tipo PHP correcto:
-- `'is_active' => 'boolean'` → Convierte 0/1 a `false`/`true`
-- `'power_level' => 'integer'` → Convierte string a número entero
-- `'created_at' => 'datetime'` → Convierte a objeto Carbon (fechas)
-
-**Por ahora, con `$fillable` es suficiente.**
+Cuando Blade renderiza una vista, lee primero el layout, localiza cada `@yield`, y sustituye ese marcador por el contenido que la vista ha definido en el `@section` correspondiente. El resultado es un único HTML completo que se envía al navegador.
 
 ---
 
-## ¿Qué es Eloquent ORM?
+## Paso 1: Crear el layout principal
 
-Ya tienes tu modelo `Hero` creado. Ahora entendamos qué es Eloquent y por qué es mejor que Query Builder.
+Por convención, los layouts se guardan en `resources/views/layouts/`. Crea esa carpeta y dentro el archivo `app.blade.php`:
 
-### Definición
-
-**Eloquent** es el **ORM** (Object-Relational Mapping) de Laravel.
-
-**ORM** = Puente entre tus objetos PHP y las tablas de la base de datos.
-
-En lugar de escribir SQL o usar `DB::table()`, trabajas directamente con **objetos** que representan registros de la base de datos.
-
-### Comparación: Query Builder vs Eloquent
-
-**Query Builder (Fase 3):**
-
-```php
-use Illuminate\Support\Facades\DB;
-
-// Obtener todos los héroes
-$heroes = DB::table('heroes')->get();
-
-// Buscar por ID
-$hero = DB::table('heroes')->find(1);
-
-// Filtrar
-$heroes = DB::table('heroes')->where('team', 'Vengadores')->get();
-
-// Crear nuevo héroe
-DB::table('heroes')->insert([
-    'name' => 'Iron Man',
-    'power' => 'Tecnología',
-    'team' => 'Vengadores'
-]);
-
-// Los resultados son objetos stdClass genéricos
-echo $hero->name; // funciona
+```
+resources/
+└── views/
+    └── layouts/
+        └── app.blade.php   ← nuevo
 ```
 
-**Eloquent (Fase 4):**
+El nombre `app` es una convención habitual en Laravel, aunque puede llamarse de cualquier manera. Si un proyecto tuviese dos diseños distintos —por ejemplo, uno para la parte pública y otro para un panel de administración— tendría dos layouts: `app.blade.php` y `admin.blade.php`.
+
+### Los estilos pasan a un archivo externo
+
+Hasta la Fase 4 cada vista incluía sus estilos dentro de un bloque `<style>` en el propio archivo. Al crear el layout, ese bloque se repetiría una sola vez —lo cual ya es una mejora— pero podemos ir un paso más lejos: mover los estilos a un archivo CSS independiente en `public/css/heroes.css` y enlazarlo desde el layout con una etiqueta `<link>`.
+
+Esto tiene dos ventajas concretas. La primera es que el layout queda limpio y legible, sin cientos de líneas de CSS mezcladas con HTML. La segunda es que el navegador puede cachear el archivo CSS y no necesita descargarlo en cada página, lo que mejora el rendimiento.
+
+El archivo `public/css/heroes.css` ya contiene los estilos del proyecto. Para enlazarlo desde el layout se usa la función `asset()` de Laravel, que genera la URL correcta al directorio `public/`:
+
+```html
+<link rel="stylesheet" href="{{ asset('css/heroes.css') }}">
+```
+
+A partir de esta fase, ninguna vista necesita un bloque `<style>` propio. Todos los estilos viven en `heroes.css` y se cargan automáticamente a través del layout.
+
+### El layout completo
+
+```html
+{{-- resources/views/layouts/app.blade.php --}}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@yield('titulo', 'Marvel Hub')</title>
+    <link rel="stylesheet" href="{{ asset('css/heroes.css') }}">
+</head>
+<body>
+
+    <nav>
+        <a href="{{ route('heroes.index') }}">Héroes</a>
+        <a href="{{ route('heroes.active') }}">Activos</a>
+        <a href="{{ route('heroes.powerful') }}">Más poderosos</a>
+    </nav>
+
+    <main>
+        @if(session('success'))
+            <div class="alert">{{ session('success') }}</div>
+        @endif
+
+        @yield('contenido')
+    </main>
+
+    <footer>
+        <p>Marvel Hub &copy; 2025</p>
+    </footer>
+
+</body>
+</html>
+```
+
+### Análisis del layout
+
+**El hueco del título:**
+
+```html
+<title>@yield('titulo', 'Marvel Hub')</title>
+```
+
+`@yield('titulo', 'Marvel Hub')` define un hueco llamado `titulo` dentro de la etiqueta `<title>`. El segundo parámetro es el **valor por defecto**: si una vista no define su propio título, el navegador mostrará `Marvel Hub`. Cuando una vista sí lo define, mostrará el valor que ella indique. Esto permite que cada página tenga un título descriptivo en la pestaña del navegador sin que el layout imponga uno fijo para todas.
+
+**El hueco del contenido:**
+
+```html
+<main>
+    @yield('contenido')
+</main>
+```
+
+Este es el hueco principal. Todo el HTML específico de cada vista —la lista de héroes, el detalle de uno, los filtros— se insertará aquí. A diferencia del título, este hueco no tiene valor por defecto, porque no tiene sentido mostrar una página sin contenido.
+
+**La navegación usa rutas nombradas:**
+
+```html
+<a href="{{ route('heroes.index') }}">Héroes</a>
+```
+
+Al usar `route()` en lugar de URLs escritas a mano, si en algún momento cambias la URL de una ruta en `web.php`, los enlaces del layout se actualizan automáticamente en todas las páginas sin necesitar modificar el HTML.
+
+---
+
+## Paso 2: Adaptar las vistas para usar el layout
+
+Con el layout creado, cada vista puede eliminar todo el HTML estructural y contener únicamente su contenido propio. El mecanismo son `@extends` y `@section`.
+
+### Vista index.blade.php
+
+**Antes** (estructura repetida, sin layout):
+
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Marvel Hub</title>
+    <style>/* estilos repetidos */</style>
+</head>
+<body>
+    <nav>...</nav>
+    <main>
+        <h1>Héroes</h1>
+        @foreach($heroes as $hero)
+            <div>{{ $hero->name }}</div>
+        @endforeach
+    </main>
+    <footer>...</footer>
+</body>
+</html>
+```
+
+**Después** (usando el layout):
+
+```html
+{{-- resources/views/heroes/index.blade.php --}}
+@extends('layouts.app')
+
+@section('titulo', 'Héroes — Marvel Hub')
+
+@section('contenido')
+    <h1>Héroes</h1>
+
+    @foreach($heroes as $hero)
+        <div class="hero-card">
+            <h2>{{ $hero->name }}</h2>
+            <p>{{ $hero->power }}</p>
+            <p>Nivel: {{ $hero->power_level }}</p>
+            <a href="{{ route('heroes.show', $hero->id) }}">Ver detalle</a>
+        </div>
+    @endforeach
+@endsection
+```
+
+La reducción es drástica. La vista pasa de tener toda la estructura HTML a contener únicamente lo que la hace única: su título y su listado.
+
+**`@extends('layouts.app')`**
+
+Esta directiva debe aparecer en la primera línea de la vista. Le indica a Blade que esta vista no es un HTML autónomo, sino que forma parte del layout `resources/views/layouts/app.blade.php`. La ruta sigue la misma convención que `view()`: puntos en lugar de barras y sin extensión, por lo que `layouts.app` apunta a `resources/views/layouts/app.blade.php`.
+
+**`@section('titulo', 'Héroes — Marvel Hub')`**
+
+Rellena el hueco `titulo` del layout con el texto `Héroes — Marvel Hub`. Esta forma de una sola línea es válida cuando el contenido es texto simple. El HTML resultante será `<title>Héroes — Marvel Hub</title>`.
+
+**`@section('contenido') ... @endsection`**
+
+Todo lo que escribas entre `@section('contenido')` y `@endsection` se insertará donde el layout tiene `@yield('contenido')`. No hay límite en la complejidad de este bloque: puede contener HTML, directivas Blade, bucles y condicionales.
+
+---
+
+### Vista show.blade.php
+
+```html
+{{-- resources/views/heroes/show.blade.php --}}
+@extends('layouts.app')
+
+@section('titulo', $hero->name . ' — Marvel Hub')
+
+@section('contenido')
+    <a href="{{ route('heroes.index') }}" class="back-link">&larr; Volver al listado</a>
+
+    <div class="hero-detail">
+        <h1>{{ $hero->name }}</h1>
+
+        <div class="info-row">
+            <span class="label">Nombre real</span>
+            <span class="value">{{ $hero->real_name }}</span>
+        </div>
+
+        <div class="info-row">
+            <span class="label">Poder</span>
+            <span class="value">{{ $hero->power }}</span>
+        </div>
+
+        <div class="info-row">
+            <span class="label">Nivel de poder</span>
+            <span class="value">{{ $hero->power_level }}</span>
+        </div>
+
+        <div class="info-row">
+            <span class="label">Equipo</span>
+            <span class="value">{{ $hero->team }}</span>
+        </div>
+
+        <div class="info-row">
+            <span class="label">Biografía</span>
+            <span class="value">{{ $hero->bio }}</span>
+        </div>
+
+        <div class="info-row">
+            <span class="label">Estado</span>
+            <span class="value">
+                @if($hero->is_active)
+                    Activo
+                @else
+                    Inactivo
+                @endif
+            </span>
+        </div>
+    </div>
+@endsection
+```
+
+Aquí el título del hueco es una expresión PHP en lugar de texto fijo:
+
+```html
+@section('titulo', $hero->name . ' — Marvel Hub')
+```
+
+Blade evalúa la expresión en el momento de renderizar, de modo que si el héroe es Thor, el título resultante será `Thor — Marvel Hub`. Las variables que el controlador ha pasado a la vista —en este caso `$hero`— están disponibles dentro de todos los `@section`.
+
+---
+
+### Vista active.blade.php
+
+```html
+{{-- resources/views/heroes/active.blade.php --}}
+@extends('layouts.app')
+
+@section('titulo', 'Héroes Activos — Marvel Hub')
+
+@section('contenido')
+    <h1>Héroes Activos</h1>
+
+    @forelse($heroes as $hero)
+        <div class="hero-card">
+            <h2>{{ $hero->name }}</h2>
+            <p>{{ $hero->power }}</p>
+            <a href="{{ route('heroes.show', $hero->id) }}">Ver detalle</a>
+        </div>
+    @empty
+        <p>No hay héroes activos en este momento.</p>
+    @endforelse
+@endsection
+```
+
+Aquí aparece `@forelse`, una directiva de Blade que merece atención. Es una variante de `@foreach` que incorpora un bloque `@empty` para gestionar el caso en que la colección esté vacía.
+
+Sin `@forelse`, manejar una colección vacía requería combinar dos directivas:
+
+```html
+{{-- Sin @forelse --}}
+@if($heroes->isEmpty())
+    <p>No hay héroes activos.</p>
+@else
+    @foreach($heroes as $hero)
+        <div>{{ $hero->name }}</div>
+    @endforeach
+@endif
+```
+
+Con `@forelse` el mismo resultado es más limpio:
+
+```html
+{{-- Con @forelse --}}
+@forelse($heroes as $hero)
+    <div>{{ $hero->name }}</div>
+@empty
+    <p>No hay héroes activos.</p>
+@endforelse
+```
+
+El bloque `@empty` solo se ejecuta cuando la colección no tiene ningún elemento. Si tiene al menos uno, se ejecuta el bucle y `@empty` se ignora por completo.
+
+---
+
+### Vista powerful.blade.php
+
+```html
+{{-- resources/views/heroes/powerful.blade.php --}}
+@extends('layouts.app')
+
+@section('titulo', 'Héroes Más Poderosos — Marvel Hub')
+
+@section('contenido')
+    <h1>Héroes Más Poderosos</h1>
+    <p>Héroes con nivel de poder superior a 8000, ordenados de mayor a menor.</p>
+
+    @forelse($heroes as $hero)
+        <div class="hero-card">
+            <h2>{{ $hero->name }}</h2>
+            <p>Nivel: {{ $hero->power_level }}</p>
+            <a href="{{ route('heroes.show', $hero->id) }}">Ver detalle</a>
+        </div>
+    @empty
+        <p>No hay héroes con ese nivel de poder.</p>
+    @endforelse
+@endsection
+```
+
+---
+
+## Paso 3: Extraer partes reutilizables con @include
+
+Fíjate en que `index.blade.php`, `active.blade.php` y `powerful.blade.php` repiten el mismo bloque HTML para mostrar cada héroe:
+
+```html
+<div class="hero-card">
+    <h2>{{ $hero->name }}</h2>
+    <p>{{ $hero->power }}</p>
+    <a href="{{ route('heroes.show', $hero->id) }}">Ver detalle</a>
+</div>
+```
+
+El mismo problema de antes, pero a menor escala: si necesitas cambiar el aspecto de la tarjeta de héroe, tienes que editar tres archivos. Blade ofrece `@include` para resolver esto.
+
+Un **parcial** es un fragmento de vista almacenado en su propio archivo que puede insertarse en cualquier otra vista. No tiene `@extends` ni `@section`: es simplemente un trozo de HTML reutilizable.
+
+### Crear el parcial
+
+La convención habitual es guardar los parciales en `resources/views/partials/`. La estructura de carpetas queda así:
+
+```
+resources/
+└── views/
+    ├── layouts/
+    │   └── app.blade.php
+    ├── heroes/
+    │   ├── index.blade.php
+    │   ├── show.blade.php
+    │   ├── active.blade.php
+    │   └── powerful.blade.php
+    └── partials/
+        └── hero-card.blade.php   ← nuevo
+```
+
+```html
+{{-- resources/views/partials/hero-card.blade.php --}}
+<div class="hero-card">
+    <h2>{{ $hero->name }}</h2>
+    <p>{{ $hero->power }}</p>
+    <p>Nivel: {{ $hero->power_level }}</p>
+    <a href="{{ route('heroes.show', $hero->id) }}">Ver detalle</a>
+</div>
+```
+
+El parcial usa `$hero` directamente sin recibirla como parámetro. Esto es posible porque `@include` comparte automáticamente el contexto de variables de la vista que lo llama: si en ese punto del bucle la vista tiene acceso a `$hero`, el parcial también lo tiene.
+
+### Usar el parcial en las vistas
+
+```html
+{{-- resources/views/heroes/index.blade.php --}}
+@extends('layouts.app')
+
+@section('titulo', 'Héroes — Marvel Hub')
+
+@section('contenido')
+    <h1>Héroes</h1>
+
+    @foreach($heroes as $hero)
+        @include('partials.hero-card')
+    @endforeach
+@endsection
+```
+
+`@include('partials.hero-card')` sigue la misma convención de puntos: busca `resources/views/partials/hero-card.blade.php` y lo inserta en ese punto del HTML. En cada iteración del `@foreach`, la variable `$hero` tiene el valor del héroe actual, y el parcial la usa para renderizar esa tarjeta concreta.
+
+Ahora si necesitas cambiar el diseño de la tarjeta de héroe, solo tienes que editar `partials/hero-card.blade.php` y el cambio se aplica en todas las vistas que lo incluyen.
+
+### @section vs @include
+
+Ambos insertan contenido en la vista, pero su mecanismo es distinto y responden a necesidades diferentes.
+
+`@section` rellena un hueco que el layout ha declarado con `@yield`. Es el layout quien decide dónde va ese contenido: la vista simplemente lo proporciona. Solo puede existir un `@section('contenido')` por vista, y aparecerá exactamente donde el layout tiene su `@yield('contenido')`.
+
+`@include` inserta un parcial en el punto exacto donde tú lo escribes, dentro del contenido que ya estás construyendo. No hay ningún `@yield` esperando ese fragmento en ningún sitio. Tú decides dónde, cuándo y cuántas veces lo insertas.
+
+```html
+@section('contenido')
+    <h1>Héroes</h1>                        {{-- va al @yield del layout --}}
+
+    @foreach($heroes as $hero)
+        @include('partials.hero-card')     {{-- se inserta aquí mismo, en cada iteración --}}
+    @endforeach
+@endsection
+```
+
+En resumen: `@section` comunica la vista con su layout, `@include` reutiliza fragmentos dentro del contenido que la vista ya está construyendo.
+
+---
+
+## Cómo funciona el proceso completo
+
+Cuando el navegador solicita `/heroes`, los pasos que ocurren son los siguientes:
+
+**1.** El router recibe la petición y llama a `HeroController@index`.
+
+**2.** El controlador consulta la base de datos y retorna la vista:
 
 ```php
-use App\Models\Hero;
-
-// Obtener todos los héroes
 $heroes = Hero::all();
-
-// Buscar por ID
-$hero = Hero::find(1);
-
-// Filtrar
-$heroes = Hero::where('team', 'Vengadores')->get();
-
-// Crear nuevo héroe
-Hero::create([
-    'name' => 'Iron Man',
-    'power' => 'Tecnología',
-    'team' => 'Vengadores'
-]);
-
-// Los resultados son objetos Hero (modelos)
-echo $hero->name; // funciona
-```
-
-### Ventajas de Eloquent
-
-| Query Builder | Eloquent |
-|---------------|----------|
-| `DB::table('heroes')` | `Hero::` (más corto y legible) |
-| Objetos genéricos `stdClass` | Objetos `Hero` con lógica propia |
-| Sin validaciones | Puede incluir validaciones |
-| Sin relaciones | Soporta relaciones (futuro) |
-| Sin métodos personalizados | Métodos personalizados en modelo |
-| Acceso manual a timestamps | Timestamps automáticos |
-
-**En resumen:**
-- **Query Builder:** Más flexible, más SQL-like
-- **Eloquent:** Más elegante, orientado a objetos, más Laravel
-
----
-
-## Paso 2: Actualizar HeroController para usar Eloquent
-
-Ahora vamos a transformar tu `HeroController` de la Fase 3 para usar el modelo `Hero` en lugar de `DB::table()`.
-
-### 2.1. Cambiar el import
-
-Abre `app/Http/Controllers/HeroController.php`.
-
-**Antes (Fase 3):**
-
-```php
-<?php
-
-namespace App\Http\Controllers;
-
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-
-class HeroController extends Controller
-{
-    // ...
-}
-```
-
-**Después (Fase 4):**
-
-```php
-<?php
-
-namespace App\Http\Controllers;
-
-use Illuminate\Http\Request;
-use App\Models\Hero;  // ← Cambio aquí
-
-class HeroController extends Controller
-{
-    // ...
-}
-```
-
-**Importante:** Ya NO necesitas `use Illuminate\Support\Facades\DB;`
-
-### 2.2. Una mejora: la función compact()
-
-Antes de actualizar los métodos, vale la pena conocer `compact()`, una función de PHP que a partir de esta fase usaremos habitualmente al pasar datos a las vistas.
-
-Hasta ahora en la Fase 3 escribías:
-
-```php
-return view('heroes.index', ['heroes' => $heroes]);
-```
-
-Con `compact()` puedes escribir lo mismo de forma más corta:
-
-```php
 return view('heroes.index', compact('heroes'));
 ```
 
-`compact('heroes')` construye automáticamente el array `['heroes' => $heroes]`: toma la variable `$heroes` que existe en ese momento y usa su nombre como clave. Cuando necesitas pasar varias variables la diferencia es más evidente:
+**3.** Blade lee `resources/views/heroes/index.blade.php` y encuentra `@extends('layouts.app')`. En ese momento sabe que esta vista no es autónoma y necesita el layout para construir el HTML completo.
 
-```php
-// Sin compact
-return view('heroes.team', ['heroes' => $heroes, 'team' => $team]);
+**4.** Blade lee `resources/views/layouts/app.blade.php` y toma nota de todos los `@yield` que contiene: `titulo` y `contenido`.
 
-// Con compact
-return view('heroes.team', compact('heroes', 'team'));
-```
+**5.** Blade vuelve a la vista y recoge el contenido de cada `@section`. Donde encuentre `@include`, inserta el parcial correspondiente compartiendo el contexto de variables.
 
-El resultado es idéntico en ambos casos. `compact()` no hace nada que no pudieras hacer con un array, simplemente elimina la repetición de escribir el nombre de la variable dos veces.
+**6.** Blade construye el HTML final sustituyendo cada `@yield` del layout por el `@section` correspondiente de la vista.
 
-### 2.3. Método index() - Listar todos los héroes
+**7.** El HTML resultante —completo, con `<head>`, navegación, contenido y footer— se envía al navegador.
 
-**Antes (Query Builder):**
-
-```php
-public function index()
-{
-    $heroes = DB::table('heroes')->get();
-    return view('heroes.index', ['heroes' => $heroes]);
-}
-```
-
-**Después (Eloquent):**
-
-```php
-public function index()
-{
-    $heroes = Hero::all();
-    return view('heroes.index', compact('heroes'));
-}
-```
-
-**Cambios:**
-- `DB::table('heroes')->get()` → `Hero::all()`
-- Más corto y semántico
-
-### 2.4. Método show() - Mostrar detalle de un héroe
-
-**Antes (Query Builder):**
-
-```php
-public function show($id)
-{
-    $hero = DB::table('heroes')->find($id);
-    
-    if (!$hero) {
-        abort(404);
-    }
-    
-    return view('heroes.show', ['hero' => $hero]);
-}
-```
-
-**Después (Eloquent):**
-
-```php
-public function show($id)
-{
-    $hero = Hero::findOrFail($id);
-    return view('heroes.show', compact('hero'));
-}
-```
-
-**Cambios:**
-- `DB::table('heroes')->find($id)` → `Hero::findOrFail($id)`
-- Ya NO necesitas el `if (!$hero)` → `findOrFail()` lanza 404 automáticamente
-
-### 2.5. Método active() - Héroes activos
-
-**Antes (Query Builder):**
-
-```php
-public function active()
-{
-    $heroes = DB::table('heroes')
-        ->where('is_active', 1)
-        ->get();
-    
-    return view('heroes.active', ['heroes' => $heroes]);
-}
-```
-
-**Después (Eloquent):**
-
-```php
-public function active()
-{
-    $heroes = Hero::where('is_active', true)->get();
-    return view('heroes.active', compact('heroes'));
-}
-```
-
-**Cambios:**
-- `DB::table('heroes')` → `Hero::`
-- `->where('is_active', 1)` → `->where('is_active', true)`
-  - Gracias a `$casts`, puedes usar booleanos directamente
-
-### 2.6. Método powerful() - Héroes poderosos
-
-**Antes (Query Builder):**
-
-```php
-public function powerful()
-{
-    $heroes = DB::table('heroes')
-        ->where('power_level', '>', 8000)
-        ->orderBy('power_level', 'desc')
-        ->get();
-    
-    return view('heroes.powerful', ['heroes' => $heroes]);
-}
-```
-
-**Después (Eloquent):**
-
-```php
-public function powerful()
-{
-    $heroes = Hero::where('power_level', '>', 8000)
-        ->orderBy('power_level', 'desc')
-        ->get();
-    
-    return view('heroes.powerful', compact('heroes'));
-}
-```
-
-**Cambios:**
-- `DB::table('heroes')` → `Hero::`
-- El resto es idéntico (Eloquent usa los mismos métodos de Query Builder)
-
-### 2.7. Método team() - Héroes por equipo
-
-**Antes (Query Builder):**
-
-```php
-public function team($team)
-{
-    $heroes = DB::table('heroes')
-        ->where('team', $team)
-        ->get();
-    
-    return view('heroes.team', ['heroes' => $heroes, 'team' => $team]);
-}
-```
-
-**Después (Eloquent):**
-
-```php
-public function team($team)
-{
-    $heroes = Hero::where('team', $team)->get();
-    return view('heroes.team', compact('heroes', 'team'));
-}
-```
-
-**Cambios:**
-- `DB::table('heroes')` → `Hero::`
-
-### 2.8. HeroController completo con Eloquent
-
-```php
-<?php
-
-namespace App\Http\Controllers;
-
-use Illuminate\Http\Request;
-use App\Models\Hero;
-
-class HeroController extends Controller
-{
-    // Listar todos los héroes
-    public function index()
-    {
-        $heroes = Hero::all();
-        return view('heroes.index', compact('heroes'));
-    }
-    
-    // Mostrar detalle de un héroe
-    public function show($id)
-    {
-        $hero = Hero::findOrFail($id);
-        return view('heroes.show', compact('hero'));
-    }
-    
-    // Héroes activos
-    public function active()
-    {
-        $heroes = Hero::where('is_active', true)->get();
-        return view('heroes.active', compact('heroes'));
-    }
-    
-    // Héroes poderosos (power_level > 8000)
-    public function powerful()
-    {
-        $heroes = Hero::where('power_level', '>', 8000)
-            ->orderBy('power_level', 'desc')
-            ->get();
-        
-        return view('heroes.powerful', compact('heroes'));
-    }
-    
-    // Héroes por equipo
-    public function team($team)
-    {
-        $heroes = Hero::where('team', $team)->get();
-        return view('heroes.team', compact('heroes', 'team'));
-    }
-}
-```
-
-### 2.9. Probar los cambios
-
-**No necesitas modificar:**
-- ✅ Las rutas (`routes/web.php`)
-- ✅ Las vistas (`resources/views/heroes/`)
-- ✅ La base de datos
-
-**Solo cambiaste:**
-- ✅ Creaste el modelo `Hero`
-- ✅ Actualizaste el controlador para usar `Hero::` en lugar de `DB::table()`
-
-**Prueba tu aplicación:**
-
-```bash
-php artisan serve
-```
-
-Accede a:
-- `http://localhost:8000/heroes` → Debe funcionar igual
-- `http://localhost:8000/heroes/1` → Debe mostrar detalle
-- `http://localhost:8000/heroes/activos` → Debe funcionar
-
-**Si todo funciona, ¡felicidades!** Has migrado de Query Builder a Eloquent.
+El controlador no sabe nada de este proceso: su trabajo termina en el paso 2. Toda la composición de la página ocurre dentro de la capa de vistas, lo que mantiene cada capa con una responsabilidad clara y separada.
 
 ---
 
-## Métodos Eloquent más comunes
+## Resumen de directivas
 
-Ahora que tienes tu modelo funcionando, veamos los métodos más útiles de Eloquent.
-
-### Consultar datos
-
-```php
-// Todos los registros
-$heroes = Hero::all();
-
-// Primer registro
-$hero = Hero::first();
-
-// Buscar por ID
-$hero = Hero::find(1);
-
-// Buscar por ID o error 404
-$hero = Hero::findOrFail(1);
-
-// Con condiciones
-$heroes = Hero::where('team', 'Vengadores')->get();
-$heroes = Hero::where('power_level', '>', 8000)->get();
-
-// Primera coincidencia con condición
-$hero = Hero::where('name', 'Thor')->first();
-
-// Primera coincidencia o error 404
-$hero = Hero::where('name', 'Thor')->firstOrFail();
-
-// Ordenar
-$heroes = Hero::orderBy('power_level', 'desc')->get();
-
-// Limitar resultados
-$heroes = Hero::orderBy('power_level', 'desc')->limit(3)->get();
-
-// Contar
-$total = Hero::count();
-$totalActivos = Hero::where('is_active', true)->count();
-```
-
-### Crear registros
-
-```php
-// Forma 1: create() - Asignación masiva
-$hero = Hero::create([
-    'name' => 'Iron Man',
-    'real_name' => 'Tony Stark',
-    'power' => 'Tecnología',
-    'power_level' => 8500,
-    'team' => 'Vengadores',
-    'bio' => 'Genio, millonario, playboy, filántropo',
-    'is_active' => true
-]);
-
-// Forma 2: new + save()
-$hero = new Hero();
-$hero->name = 'Captain America';
-$hero->real_name = 'Steve Rogers';
-$hero->power = 'Super soldado';
-$hero->power_level = 8000;
-$hero->team = 'Vengadores';
-$hero->bio = 'El primer Vengador';
-$hero->is_active = true;
-$hero->save();
-```
-
-### Actualizar registros
-
-```php
-// Forma 1: Buscar y actualizar
-$hero = Hero::find(1);
-$hero->power_level = 9000;
-$hero->save();
-
-// Forma 2: update() - Asignación masiva
-$hero = Hero::find(1);
-$hero->update([
-    'power_level' => 9000,
-    'bio' => 'Nueva biografía'
-]);
-
-// Forma 3: where()->update() - Actualizar múltiples
-Hero::where('team', 'Vengadores')
-    ->update(['is_active' => true]);
-```
-
-### Eliminar registros
-
-```php
-// Buscar y eliminar
-$hero = Hero::find(1);
-$hero->delete();
-
-// Eliminar por ID
-Hero::destroy(1);
-
-// Eliminar múltiples IDs
-Hero::destroy([1, 2, 3]);
-
-// Eliminar con condición
-Hero::where('power_level', '<', 1000)->delete();
-```
+| Directiva | Archivo | Qué hace |
+|-----------|---------|----------|
+| `@yield('nombre')` | Layout | Marca un hueco que las vistas rellenarán |
+| `@yield('nombre', 'defecto')` | Layout | Hueco con valor cuando la vista no lo define |
+| `@extends('layouts.app')` | Vista | Indica qué layout usa esta vista |
+| `@section('nombre', 'valor')` | Vista | Rellena un hueco con una línea de texto o expresión |
+| `@section('nombre')` / `@endsection` | Vista | Rellena un hueco con un bloque HTML completo |
+| `@include('ruta.parcial')` | Vista | Inserta un parcial compartiendo el contexto de variables |
+| `@forelse` / `@empty` / `@endforelse` | Vista | Bucle con bloque alternativo para colección vacía |
 
 ---
 
-## Diferencias clave: Query Builder vs Eloquent
+## Ejercicio Práctico: Plataforma de Música
 
-### Métodos terminales
-
-Ambos comparten muchos métodos, pero hay diferencias:
-
-| Query Builder | Eloquent | Diferencia |
-|--------------|----------|----------|
-| `->get()` | `->get()` o `::all()` | Eloquent tiene `all()` |
-| `->find($id)` | `::find($id)` | Sintaxis distinta |
-| NO existe | `::findOrFail($id)` | Solo Eloquent |
-| `->first()` | `->first()` | Igual |
-| NO existe | `->firstOrFail()` | Solo Eloquent |
-
-### Creación de registros
-
-| Query Builder | Eloquent |
-|--------------|----------|
-| `DB::table('heroes')->insert([...])` | `Hero::create([...])` |
-| NO retorna el objeto creado | Retorna el modelo creado |
-
-### Actualización
-
-| Query Builder | Eloquent |
-|--------------|----------|
-| `DB::table('heroes')->where(...)->update([...])` | `$hero->update([...])` |
-| Actualiza múltiples siempre | Puede actualizar uno o múltiples |
-
-### Objetos retornados
-
-| Query Builder | Eloquent |
-|--------------|----------|
-| Objetos `stdClass` | Objetos `Hero` (modelo) |
-| Sin métodos personalizados | Puede tener métodos personalizados |
-
----
-
-## Probar con Tinker
-
-Tinker es perfecto para experimentar con Eloquent.
-
-```bash
-php artisan tinker
-```
-
-### Ejemplos:
-
-```php
-// Importar modelo
-use App\Models\Hero;
-
-// Ver todos
-Hero::all();
-
-// Buscar uno
-$hero = Hero::find(1);
-$hero->name;
-$hero->power;
-
-// Crear
-$hero = Hero::create([
-    'name' => 'Black Widow',
-    'real_name' => 'Natasha Romanoff',
-    'power' => 'Espionaje',
-    'power_level' => 7500,
-    'team' => 'Vengadores',
-    'bio' => 'Espía de élite',
-    'is_active' => true
-]);
-
-// Actualizar
-$hero = Hero::find(1);
-$hero->power_level = 9500;
-$hero->save();
-
-// Eliminar
-$hero = Hero::find(5);
-$hero->delete();
-
-// Consultas
-Hero::where('team', 'Vengadores')->count();
-Hero::where('power_level', '>', 8000)->get();
-Hero::orderBy('power_level', 'desc')->first();
-```
-
----
-
-## Ejercicio Práctico: Sistema de Películas
-
-Ahora que dominas Eloquent con el modelo `Hero`, vamos a crear un sistema independiente para gestionar películas.
-
-### Contexto
-
-Eres desarrollador en una plataforma de streaming. Te piden crear un sistema para mostrar el catálogo de películas clásicas.
-
-**Requisitos del cliente:**
-
-1. Mostrar listado completo de películas
-2. Ver ficha detallada de cada película
-3. Filtrar películas disponibles para ver
-4. Mostrar las mejor valoradas (calificación ≥ 8.5)
-5. Filtrar películas por género
+Eres desarrollador en una plataforma de streaming de música. Te piden crear un sistema para mostrar el catálogo de álbumes clásicos con un diseño coherente en todas las páginas.
 
 ### Datos de ejemplo
 
-Vas a trabajar con estas 10 películas clásicas:
+Crea la base de datos `musica` con la tabla `albumes` y estos 10 registros:
 
-| Título | Director | Año | Género | Duración | Calificación | Disponible |
-|--------|----------|-----|--------|----------|--------------|------------|
-| El Padrino | Francis Ford Coppola | 1972 | Drama | 175 | 9.2 | Sí |
-| Pulp Fiction | Quentin Tarantino | 1994 | Crimen | 154 | 8.9 | Sí |
-| El Caballero Oscuro | Christopher Nolan | 2008 | Acción | 152 | 9.0 | No |
-| 12 Hombres sin Piedad | Sidney Lumet | 1957 | Drama | 96 | 9.0 | Sí |
-| La Lista de Schindler | Steven Spielberg | 1993 | Drama | 195 | 9.0 | Sí |
-| El Señor de los Anillos: El Retorno del Rey | Peter Jackson | 2003 | Fantasía | 201 | 9.0 | No |
-| Forrest Gump | Robert Zemeckis | 1994 | Drama | 142 | 8.8 | Sí |
-| Inception | Christopher Nolan | 2010 | Ciencia Ficción | 148 | 8.8 | Sí |
-| Matrix | Lana Wachowski | 1999 | Ciencia Ficción | 136 | 8.7 | No |
-| Goodfellas | Martin Scorsese | 1990 | Crimen | 145 | 8.7 | Sí |
+| Título | Artista | Año | Género | Canciones | Valoración | Disponible |
+|--------|---------|-----|--------|-----------|------------|------------|
+| Thriller | Michael Jackson | 1982 | Pop | 9 | 9.5 | Sí |
+| Back in Black | AC/DC | 1980 | Rock | 10 | 9.2 | Sí |
+| The Dark Side of the Moon | Pink Floyd | 1973 | Rock | 10 | 9.4 | No |
+| Abbey Road | The Beatles | 1969 | Rock | 17 | 9.3 | Sí |
+| Rumours | Fleetwood Mac | 1977 | Pop Rock | 11 | 9.1 | Sí |
+| Born to Run | Bruce Springsteen | 1975 | Rock | 8 | 8.9 | No |
+| Purple Rain | Prince | 1984 | Pop | 9 | 9.0 | Sí |
+| Nevermind | Nirvana | 1991 | Grunge | 12 | 9.2 | Sí |
+| What's Going On | Marvin Gaye | 1971 | Soul | 9 | 9.3 | No |
+| Kind of Blue | Miles Davis | 1959 | Jazz | 5 | 9.4 | Sí |
 
----
+### Requisitos del cliente
 
-## Tareas a realizar
+1. Listado completo de álbumes
+2. Ficha detallada de cada álbum
+3. Álbumes disponibles para escuchar
+4. Mejores álbumes (valoración ≥ 9.2)
+5. Filtro por género
 
-### Tarea 1: Crear base de datos y tabla
+Todos los apartados deben compartir el mismo layout con navegación entre secciones.
 
-Usa phpMyAdmin para crear la base de datos y tabla.
+### Tareas a realizar
 
-**Requisitos:**
-- Base de datos: `cine`
-- Tabla: `peliculas`
-- Collation: `utf8mb4_unicode_ci`
-- Campos:
-  - `id` (INT, AUTO_INCREMENT, PRIMARY KEY)
-  - `titulo` (VARCHAR 150)
-  - `director` (VARCHAR 100)
-  - `año` (INT)
-  - `genero` (VARCHAR 50)
-  - `duracion` (INT, minutos)
-  - `sinopsis` (TEXT)
-  - `calificacion` (DECIMAL 3,1)
-  - `disponible` (TINYINT 1, default 1)
-  - `created_at` (TIMESTAMP)
-  - `updated_at` (TIMESTAMP)
+**Tarea 1:** Crea la base de datos `musica` con la tabla `albumes` e inserta los 10 registros. Configura `.env` y verifica con Tinker que los datos son accesibles.
 
-Inserta las 10 películas de la tabla anterior.
+**Tarea 2:** Crea el modelo `Album` con `$table`, `$fillable` y `$casts` correctos.
 
-### Tarea 2: Configurar Laravel para la base de datos
+**Tarea 3:** Crea `AlbumController` con los métodos: `index()`, `show()`, `disponibles()`, `mejores()`, `genero($genero)`.
 
-Edita el archivo `.env`:
+**Tarea 4:** Define las rutas en `routes/web.php`. Recuerda el orden correcto: rutas específicas antes de rutas con parámetros.
 
-```env
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=cine
-DB_USERNAME=root
-DB_PASSWORD=root
-DB_COLLATION=utf8mb4_unicode_ci
-```
+**Tarea 5:** Crea el layout en `resources/views/layouts/app.blade.php` con navegación que enlace todas las secciones del catálogo.
 
-Limpia la caché:
+**Tarea 6:** Crea las 5 vistas usando `@extends` y `@section`. Usa `@forelse` en los listados con un mensaje en `@empty`.
 
-```bash
-php artisan config:clear
-```
-
-### Tarea 3: Crear el modelo Movie
-
-Crea el modelo con Artisan y configúralo correctamente.
-
-**Requisitos:**
-- Nombre del modelo: `Movie`
-- Ubicación: `app/Models/Movie.php`
-- Configurar `$table` si es necesario
-- Configurar `$fillable` con todos los campos
-- Configurar `$casts` para tipos correctos
-
-### Tarea 4: Probar con Tinker
-
-Antes de crear el controlador, verifica que el modelo funciona.
-
-```bash
-php artisan tinker
-```
-
-Prueba:
-- Obtener todas las películas
-- Buscar una película por ID
-- Filtrar por género
-- Contar películas disponibles
-
-### Tarea 5: Crear MovieController
-
-Crea el controlador con 5 métodos:
-
-1. `index()` - Listar todas las películas
-2. `show($id)` - Mostrar detalle de una película
-3. `disponibles()` - Películas disponibles
-4. `mejores()` - Películas con calificación ≥ 8.5
-5. `genero($genero)` - Películas por género
-
-### Tarea 6: Crear las rutas
-
-Define las rutas en `routes/web.php`:
-
-```
-GET /peliculas → index()
-GET /peliculas/{id} → show()
-GET /peliculas/disponibles → disponibles()
-GET /peliculas/mejores → mejores()
-GET /peliculas/genero/{genero} → genero()
-```
-
-### Tarea 7: Crear las vistas
-
-Crea vistas Blade en `resources/views/peliculas/`:
-
-1. `index.blade.php` - Tarjetas con todas las películas
-2. `show.blade.php` - Ficha detallada
-3. `disponibles.blade.php` - Solo disponibles
-4. `mejores.blade.php` - Mejor valoradas
-5. `genero.blade.php` - Por género
-
-Incluye en las vistas:
-- Título, director, año
-- Género y duración
-- Calificación con estrellas o badge
-- Indicador visual si está disponible
-- Enlaces entre vistas
+**Tarea 7:** Extrae la tarjeta de álbum en un parcial `resources/views/partials/album-card.blade.php` e inclúyelo con `@include` en las vistas que listan álbumes.
 
 ---
 
 ## Pistas y recordatorios
 
-### Sobre el Modelo
+### Sobre el modelo
 
 ```php
-class Movie extends Model
+class Album extends Model
 {
-    protected $table = 'peliculas'; // Si no sigue convención
-    
+    protected $table = 'albumes';
+
     protected $fillable = [
         'titulo',
-        'director',
+        'artista',
         'año',
-        // ... resto de campos
+        'genero',
+        'canciones',
+        'valoracion',
+        'disponible'
     ];
-    
+
     protected $casts = [
-        'año' => 'integer',
-        'duracion' => 'integer',
-        'calificacion' => 'decimal:1',
+        'año'        => 'integer',
+        'canciones'  => 'integer',
+        'valoracion' => 'decimal:1',
         'disponible' => 'boolean'
     ];
 }
 ```
 
-### Sobre el Controlador
+### Sobre el orden de rutas
 
 ```php
-use App\Models\Movie;
-
-public function index()
-{
-    $peliculas = Movie::all();
-    return view('peliculas.index', compact('peliculas'));
-}
-
-public function show($id)
-{
-    $pelicula = Movie::findOrFail($id);
-    return view('peliculas.show', compact('pelicula'));
-}
-
-public function mejores()
-{
-    $peliculas = Movie::where('calificacion', '>=', 8.5)
-        ->orderBy('calificacion', 'desc')
-        ->get();
-    
-    return view('peliculas.mejores', compact('peliculas'));
-}
+// ✅ Las rutas específicas siempre antes que las rutas con parámetros
+Route::get('/albumes', [AlbumController::class, 'index'])->name('albumes.index');
+Route::get('/albumes/disponibles', [AlbumController::class, 'disponibles'])->name('albumes.disponibles');
+Route::get('/albumes/mejores', [AlbumController::class, 'mejores'])->name('albumes.mejores');
+Route::get('/albumes/genero/{genero}', [AlbumController::class, 'genero'])->name('albumes.genero');
+Route::get('/albumes/{id}', [AlbumController::class, 'show'])->name('albumes.show');
 ```
 
-### Sobre las Rutas
+### Sobre la estructura de cada vista
 
-```php
-use App\Http\Controllers\MovieController;
+```html
+@extends('layouts.app')
 
-Route::get('/peliculas', [MovieController::class, 'index'])->name('peliculas.index');
-Route::get('/peliculas/{id}', [MovieController::class, 'show'])->name('peliculas.show');
-// ... resto de rutas
+@section('titulo', 'Catálogo — Música')
+
+@section('contenido')
+    {{-- Solo el contenido específico de esta vista --}}
+@endsection
 ```
 
-### Sobre las Vistas
+### Sobre @forelse
 
-```blade
-@foreach($peliculas as $pelicula)
-    <div class="pelicula">
-        <h3>{{ $pelicula->titulo }}</h3>
-        <p>Director: {{ $pelicula->director }}</p>
-        <p>Año: {{ $pelicula->año }}</p>
-        <p>Calificación: {{ $pelicula->calificacion }}/10</p>
-        
-        @if($pelicula->disponible)
-            <span class="badge disponible">Disponible</span>
-        @else
-            <span class="badge no-disponible">No disponible</span>
-        @endif
-        
-        <a href="{{ route('peliculas.show', $pelicula->id) }}">Ver detalles</a>
-    </div>
-@endforeach
+```html
+@forelse($albumes as $album)
+    @include('partials.album-card')
+@empty
+    <p>No hay álbumes disponibles.</p>
+@endforelse
 ```
 
 ---
 
 ## Verificación
 
-Antes de consultar las soluciones, verifica:
-
-- [ ] Base de datos `cine` creada con 10 películas
-- [ ] Archivo `.env` configurado correctamente
-- [ ] Modelo `Movie` creado con `$fillable` y `$casts`
-- [ ] Tinker muestra películas correctamente
-- [ ] `MovieController` con 5 métodos funcionales
-- [ ] 5 rutas definidas y nombradas
-- [ ] 5 vistas creadas con Blade
-- [ ] Al acceder a `/peliculas` se muestran todas las películas
-- [ ] Al acceder a `/peliculas/1` se muestra detalle
-- [ ] Filtros de disponibles, mejores y género funcionan
-- [ ] Las vistas tienen enlaces de navegación entre ellas
-
----
-
-## Reflexión Final
-
-### Comparación de enfoques
-
-**Fase 2:** Datos en arrays dentro del controlador  
-**Fase 3:** Datos en base de datos con Query Builder  
-**Fase 4:** Datos en base de datos con Eloquent ORM
-
-**Evolución:**
-
-```php
-// Fase 2: Arrays
-$heroes = [
-    ['name' => 'Thor', 'power' => 'Trueno'],
-    // ...
-];
-
-// Fase 3: Query Builder
-$heroes = DB::table('heroes')->get();
-
-// Fase 4: Eloquent
-$heroes = Hero::all();
-```
-
-### Ventajas evidentes de Eloquent
-
-- ✅ Código más corto y expresivo
-- ✅ Modelos orientados a objetos
-- ✅ Métodos automáticos como `findOrFail()`
-- ✅ Timestamps gestionados automáticamente
-- ✅ Casting de tipos automático
-- ✅ Preparado para relaciones (próximas fases)
-
-Eloquent no reemplaza Query Builder, ambos conviven en Laravel. Usa Eloquent para la mayoría de casos y Query Builder para consultas muy complejas o específicas.
+- [ ] Base de datos `musica` creada con 10 álbumes
+- [ ] Modelo `Album` con `$fillable` y `$casts` correctos
+- [ ] `AlbumController` con 5 métodos funcionales
+- [ ] Rutas definidas en el orden correcto (específicas antes de `{id}`)
+- [ ] Layout creado en `resources/views/layouts/app.blade.php`
+- [ ] Las 5 vistas comienzan con `@extends('layouts.app')`
+- [ ] El título del navegador cambia en cada página
+- [ ] Los listados usan `@forelse` con mensaje en `@empty`
+- [ ] Parcial `album-card.blade.php` creado e incluido con `@include`
+- [ ] La navegación del layout enlaza todas las secciones
+- [ ] Modificar el layout afecta a todas las páginas simultáneamente
