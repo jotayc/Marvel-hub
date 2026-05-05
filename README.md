@@ -1,25 +1,30 @@
-# Fase 6: Formularios y Validación
+# Fase 7: CRUD Completo — Editar y Eliminar
 
 ---
 
 ## De dónde partimos
 
-Hasta la Fase 5 el proyecto Marvel Hub solo permite **leer** datos: listar héroes, ver el detalle de uno, filtrar por equipo o nivel de poder. Toda esa información entró en la base de datos a través de phpMyAdmin o Tinker. No existe ninguna forma de que un usuario cree un registro nuevo desde el navegador.
+Tras la Fase 6 el proyecto Marvel Hub ya permite **crear** héroes desde el navegador. Junto con la lectura implementada en fases anteriores, el ciclo CRUD está a medias:
 
-En esta fase se cierra esa parte del ciclo: aprenderás a crear un formulario HTML en una vista Blade, recoger los datos que el usuario introduce, validarlos en el controlador antes de tocarlos, y guardar el nuevo registro en la base de datos.
+- ✅ **C**reate — Crear (Fase 6)
+- ✅ **R**ead — Leer (Fases 3 y 4)
+- ⬜ **U**pdate — Actualizar
+- ⬜ **D**elete — Eliminar
 
-El flujo completo que vas a construir es el siguiente:
+En esta fase se completan las dos operaciones que faltan. El flujo de cada una es el siguiente:
 
 ```
-Navegador                  Laravel
-   |                          |
-   |--- GET /heroes/create --> |  Muestra el formulario vacío
-   |<-- Vista create.blade --- |
-   |                          |
-   |--- POST /heroes ----------|  Envía los datos del formulario
-   |                          |  Valida los datos
-   |                          |  Guarda el héroe
-   |<-- Redirección ---------- |  Redirige al listado
+Editar
+   |--- GET /heroes/{id}/edit --|  Muestra el formulario con los datos actuales
+   |<-- Vista edit.blade --------|
+   |--- PUT /heroes/{id} --------|  Envía los datos modificados
+   |                             |  Valida y actualiza el héroe
+   |<-- Redirección a show ------|
+
+Eliminar
+   |--- DELETE /heroes/{id} -----|  Envía la petición de eliminar
+   |                             |  Elimina el héroe
+   |<-- Redirección a index -----|
 ```
 
 ---
@@ -27,181 +32,88 @@ Navegador                  Laravel
 ## Preparación: Crear una rama nueva
 
 ```bash
-git checkout 5.Layouts
-git checkout -b 6.Formularios
+git checkout 6.Formularios
+git checkout -b 7.CRUD
 ```
 
 ---
 
-## El método POST y la protección CSRF
+## El problema con los métodos HTTP en formularios HTML
 
-Hasta ahora todas las rutas que has definido usan `Route::get()`. Los formularios HTML que envían datos al servidor usan el método **POST**, que requiere su propia ruta con `Route::post()`.
+Los formularios HTML solo soportan dos métodos: `GET` y `POST`. Sin embargo, por convención las operaciones de actualización deben usar `PUT` o `PATCH`, y las de eliminación deben usar `DELETE`. Laravel necesita esos métodos para distinguir entre crear, actualizar y eliminar cuando las rutas comparten la misma URL.
 
-La diferencia entre GET y POST no es solo semántica. GET transporta los datos en la URL (visibles, cacheables, marcables como favoritos), lo que lo hace adecuado para consultas y filtros. POST transporta los datos en el cuerpo de la petición (no visibles en la URL), lo que lo hace adecuado para operaciones que crean o modifican datos.
-
-### Qué es CSRF y por qué importa
-
-**CSRF** (Cross-Site Request Forgery, falsificación de petición en sitios cruzados) es un tipo de ataque que explota la confianza que un servidor tiene en el navegador de un usuario autenticado.
-
-El escenario es el siguiente: imagina que un usuario ha iniciado sesión en una aplicación web. Mientras tiene esa sesión abierta, visita una página maliciosa en otra pestaña. Esa página podría contener un formulario oculto que apunta a la aplicación legítima:
+La solución es el **method spoofing**: incluir un campo oculto `_method` en el formulario con el método real que Laravel debe usar. Blade lo simplifica con la directiva `@method`:
 
 ```html
-{{-- Formulario oculto en una página maliciosa --}}
-<form action="https://tu-app.com/heroes" method="POST">
-    <input type="hidden" name="name" value="Héroe falso">
-</form>
-<script>document.forms[0].submit();</script>
-```
-
-Como el navegador del usuario todavía tiene la sesión activa, ese formulario se enviaría con sus credenciales sin que él lo sepa ni lo autorice. El servidor recibiría una petición aparentemente legítima.
-
-### Cómo lo resuelve Laravel
-
-Laravel protege contra esto generando un **token único por sesión**: una cadena aleatoria que solo conoce el servidor y el formulario legítimo. El flujo es el siguiente:
-
-1. El usuario abre el formulario de creación (`GET /heroes/create`)
-2. Laravel genera un token secreto y lo guarda en la sesión del usuario
-3. El formulario se envía al navegador con ese token incluido en un campo oculto
-4. Cuando el usuario envía el formulario (`POST /heroes`), el token viaja junto con los datos
-5. Laravel compara el token recibido con el que guardó en la sesión
-6. Si coinciden, la petición es legítima y se procesa
-7. Si no coinciden o no hay token, Laravel rechaza la petición con un **error 419**
-
-La página maliciosa no puede reproducir este ataque porque no conoce el token: es secreto, cambia con cada sesión y nunca se expone públicamente.
-
-### @csrf en Blade
-
-En Blade, añadir el token al formulario es una sola línea:
-
-```html
-<form action="{{ route('heroes.store') }}" method="POST">
+<form action="/heroes/1" method="POST">
     @csrf
-    {{-- campos del formulario --}}
+    @method('PUT')
+    {{-- campos --}}
 </form>
 ```
 
-`@csrf` genera automáticamente el campo oculto con el token de la sesión actual:
+`@method('PUT')` genera el campo oculto:
 
 ```html
-<input type="hidden" name="_token" value="xK9mP2...token-secreto...Qr4n">
+<input type="hidden" name="_method" value="PUT">
 ```
 
-No necesitas gestionar ese token manualmente. Laravel lo genera al crear el formulario, lo inserta con `@csrf`, y lo verifica automáticamente al recibir la petición POST. Si olvidas `@csrf` en un formulario, Laravel devolverá un error 419 al intentar enviarlo.
+Laravel lee ese campo antes de enrutar la petición. Aunque el navegador envía un `POST`, Laravel lo trata como `PUT` y lo dirige a la ruta correspondiente. El mismo mecanismo funciona con `@method('DELETE')`.
 
 ---
 
-## Paso 1: Añadir las rutas
+## Parte 1: Editar un héroe
 
-El formulario de creación necesita dos rutas que trabajan juntas:
+### Paso 1.1: Añadir las rutas de edición
+
+La edición necesita dos rutas, igual que la creación: una GET para mostrar el formulario y una PUT para recibir los datos modificados.
 
 ```php
-// routes/web.php
+// GET: muestra el formulario con los datos actuales del héroe
+Route::get('/heroes/{id}/edit', [HeroController::class, 'edit'])->name('heroes.edit');
 
-// GET: muestra el formulario vacío
-Route::get('/heroes/create', [HeroController::class, 'create'])->name('heroes.create');
-
-// POST: recibe los datos y guarda el héroe
-Route::post('/heroes', [HeroController::class, 'store'])->name('heroes.store');
+// PUT: recibe los datos modificados y actualiza el héroe
+Route::put('/heroes/{id}', [HeroController::class, 'update'])->name('heroes.update');
 ```
 
-La ruta GET sirve el formulario. La ruta POST recibe los datos cuando el usuario pulsa el botón de envío. Fíjate en que ambas comparten el mismo recurso (`heroes`) pero con métodos HTTP distintos, lo que las hace rutas independientes.
-
-El orden en `web.php` también importa aquí. La ruta `GET /heroes/create` debe estar **antes** de `GET /heroes/{id}`, de lo contrario Laravel interpretaría `create` como un ID:
+El archivo `web.php` completo hasta esta fase:
 
 ```php
 Route::get('/heroes', [HeroController::class, 'index'])->name('heroes.index');
-Route::get('/heroes/create', [HeroController::class, 'create'])->name('heroes.create');  // ← antes de {id}
+Route::get('/heroes/create', [HeroController::class, 'create'])->name('heroes.create');
 Route::get('/heroes/active', [HeroController::class, 'active'])->name('heroes.active');
 Route::get('/heroes/powerful', [HeroController::class, 'powerful'])->name('heroes.powerful');
+Route::get('/heroes/{id}/edit', [HeroController::class, 'edit'])->name('heroes.edit');
 Route::get('/heroes/{id}', [HeroController::class, 'show'])->name('heroes.show');
 Route::post('/heroes', [HeroController::class, 'store'])->name('heroes.store');
+Route::put('/heroes/{id}', [HeroController::class, 'update'])->name('heroes.update');
 ```
 
----
+La ruta `GET /heroes/{id}/edit` no entra en conflicto con `GET /heroes/{id}` porque el segmento `/edit` al final la hace distinta. Sí debe estar antes de `GET /heroes/{id}` para que Laravel no intente interpretar `edit` como un ID.
 
-## Paso 2: Añadir los métodos al controlador
+### Paso 1.2: El método edit()
 
-### El método create()
-
-`create()` tiene una única responsabilidad: devolver la vista con el formulario vacío. No consulta nada en la base de datos ni hace ningún cálculo.
+`edit()` recibe el ID, busca el héroe y devuelve el formulario de edición con el héroe cargado:
 
 ```php
-public function create()
+public function edit($id)
 {
-    return view('heroes.create');
+    $hero = Hero::findOrFail($id);
+    return view('heroes.edit', compact('hero'));
 }
 ```
 
-### El objeto Request
+La diferencia con `create()` es que aquí se pasa `$hero` a la vista para que los campos aparezcan con sus valores actuales ya rellenos.
 
-Antes de escribir `store()`, conviene entender cómo Laravel pone los datos del formulario a disposición del controlador.
+### Paso 1.3: El método update()
 
-Cuando el navegador envía el formulario, todos los campos viajan en el cuerpo de la petición HTTP. Laravel encapsula esa petición completa en un objeto de la clase `Illuminate\Http\Request`. Para acceder a ese objeto desde un método del controlador, basta con declararlo como parámetro:
+`update()` recibe el ID y los datos del formulario, valida, actualiza y redirige:
 
 ```php
-use Illuminate\Http\Request;
-
-public function store(Request $request)
+public function update(Request $request, $id)
 {
-    // $request contiene todos los datos de la petición
-}
-```
+    $hero = Hero::findOrFail($id);
 
-Laravel inyecta el objeto automáticamente cuando ve ese parámetro tipado. Dentro del método puedes acceder a cualquier campo del formulario con `$request->nombre_del_campo`:
-
-```php
-$request->name;        // Valor del campo <input name="name">
-$request->power;       // Valor del campo <input name="power">
-$request->power_level; // Valor del campo <input name="power_level">
-```
-
-También puedes obtener todos los campos a la vez como array con `$request->all()`, aunque en la práctica es mejor pedir solo los que necesitas.
-
-### La validación con validate()
-
-Antes de guardar cualquier dato en la base de datos, es imprescindible validar que los datos recibidos tienen el formato y los valores esperados. Un campo que se espera numérico podría llegar vacío o con texto; un campo obligatorio podría no venir.
-
-El método `validate()` del objeto `$request` recibe un array de reglas y comprueba que los datos del formulario las cumplen:
-
-```php
-$request->validate([
-    'name'        => 'required|string|max:100',
-    'power'       => 'required|string|max:150',
-    'power_level' => 'required|integer|min:1|max:10000',
-    'team'        => 'required|string|max:100',
-    'real_name'   => 'nullable|string|max:100',
-    'bio'         => 'nullable|string',
-    'is_active'   => 'boolean',
-]);
-```
-
-Cada clave es el nombre del campo y el valor es una cadena de reglas separadas por `|`. Las reglas más comunes son:
-
-| Regla | Qué comprueba |
-|-------|--------------|
-| `required` | El campo no puede estar vacío |
-| `nullable` | El campo puede estar vacío |
-| `string` | El valor debe ser texto |
-| `integer` | El valor debe ser un número entero |
-| `boolean` | El valor debe ser true o false |
-| `min:n` | Valor mínimo (en números) o longitud mínima (en texto) |
-| `max:n` | Valor máximo (en números) o longitud máxima (en texto) |
-| `email` | El valor debe tener formato de email |
-| `unique:tabla` | El valor no debe existir ya en esa tabla |
-
-**¿Qué ocurre si la validación falla?**
-
-Laravel interrumpe la ejecución del método y redirige automáticamente al formulario de origen. Los errores de validación se almacenan en la sesión y quedan disponibles en la vista a través de la variable `$errors`. El usuario ve el mismo formulario con los mensajes de error, sin perder los datos que ya había introducido.
-
-**¿Qué ocurre si la validación pasa?**
-
-La ejecución continúa con la línea siguiente a `validate()`. Los datos han sido verificados y se puede proceder a guardarlos.
-
-### El método store() completo
-
-```php
-public function store(Request $request)
-{
     $request->validate([
         'name'        => 'required|string|max:100',
         'real_name'   => 'nullable|string|max:100',
@@ -212,7 +124,7 @@ public function store(Request $request)
         'is_active'   => 'boolean',
     ]);
 
-    Hero::create([
+    $hero->update([
         'name'        => $request->name,
         'real_name'   => $request->real_name,
         'power'       => $request->power,
@@ -222,101 +134,243 @@ public function store(Request $request)
         'is_active'   => $request->boolean('is_active'),
     ]);
 
-    return redirect()->route('heroes.index');
+    return redirect()->route('heroes.show', $hero->id)
+        ->with('success', 'Héroe actualizado correctamente.');
 }
 ```
 
-`$request->boolean('is_active')` merece una nota. Los checkboxes HTML solo envían su valor cuando están marcados: si el checkbox no está marcado, el campo `is_active` directamente no llega en la petición. `boolean()` gestiona ese comportamiento devolviendo `true` si el campo está presente y marcado, y `false` en cualquier otro caso.
+Las reglas de validación son idénticas a `store()`. Crear y actualizar comparten los mismos requisitos sobre los datos porque los datos en sí no cambian dependiendo de si son nuevos o existentes.
 
-`redirect()->route('heroes.index')` redirige al usuario al listado de héroes tras guardar. Es una práctica estándar en formularios: después de un POST exitoso siempre se redirige, nunca se devuelve una vista directamente. Esto evita que al recargar la página el navegador pregunte si se quiere reenviar el formulario.
+Tras actualizar, la redirección va a la vista de detalle del héroe en lugar del listado, para que el usuario pueda comprobar inmediatamente el resultado de sus cambios.
+
+### Paso 1.4: La vista edit.blade.php
+
+El formulario de edición es prácticamente idéntico al de creación. Las diferencias son tres: el `action` apunta a la ruta `update` con el ID del héroe, se añade `@method('PUT')`, y los campos tienen los valores actuales precargados.
+
+El mecanismo para precargar valores es el segundo parámetro de `old()`:
+
+```php
+old('name', $hero->name)
+```
+
+`old()` con dos parámetros aplica esta lógica:
+
+- Si el formulario se ha enviado y la validación ha fallado → usa el valor que el usuario había escrito (guardado en la sesión)
+- Si el formulario se abre por primera vez → usa `$hero->name` (el valor actual en la base de datos)
+
+Esto garantiza que al abrir el formulario los campos muestran los datos del héroe, y si la validación falla, los campos muestran lo que el usuario había modificado, no el valor original.
+
+```html
+{{-- resources/views/heroes/edit.blade.php --}}
+@extends('layouts.app')
+
+@section('titulo', 'Editar ' . $hero->name . ' — Marvel Hub')
+
+@section('contenido')
+    <a href="{{ route('heroes.show', $hero->id) }}" class="back-link">&larr; Volver al detalle</a>
+
+    <div class="form-card">
+        <h1>Editar héroe</h1>
+
+        <form action="{{ route('heroes.update', $hero->id) }}" method="POST">
+            @csrf
+            @method('PUT')
+
+            <div class="form-group">
+                <label for="name">Nombre</label>
+                <input type="text" id="name" name="name" value="{{ old('name', $hero->name) }}">
+                @error('name')
+                    <span class="form-error">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div class="form-group">
+                <label for="real_name">Nombre real</label>
+                <input type="text" id="real_name" name="real_name" value="{{ old('real_name', $hero->real_name) }}">
+                @error('real_name')
+                    <span class="form-error">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div class="form-group">
+                <label for="power">Poder</label>
+                <input type="text" id="power" name="power" value="{{ old('power', $hero->power) }}">
+                @error('power')
+                    <span class="form-error">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div class="form-group">
+                <label for="power_level">Nivel de poder</label>
+                <input type="number" id="power_level" name="power_level" min="1" max="10000"
+                    value="{{ old('power_level', $hero->power_level) }}">
+                @error('power_level')
+                    <span class="form-error">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div class="form-group">
+                <label for="team">Equipo</label>
+                <input type="text" id="team" name="team" value="{{ old('team', $hero->team) }}">
+                @error('team')
+                    <span class="form-error">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div class="form-group">
+                <label for="bio">Biografía</label>
+                <textarea id="bio" name="bio">{{ old('bio', $hero->bio) }}</textarea>
+                @error('bio')
+                    <span class="form-error">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div class="form-checkbox">
+                <input type="checkbox" id="is_active" name="is_active" value="1"
+                    {{ old('is_active', $hero->is_active) ? 'checked' : '' }}>
+                <label for="is_active">Activo</label>
+            </div>
+
+            <button type="submit" class="btn-submit">Guardar cambios</button>
+        </form>
+    </div>
+@endsection
+```
+
+### Paso 1.5: Añadir el enlace a editar en la vista de detalle
+
+Actualiza `show.blade.php` para incluir el enlace al formulario de edición. Aprovecha para añadir el contenedor `.detail-actions` que también usará el botón de eliminar:
+
+```html
+{{-- resources/views/heroes/show.blade.php --}}
+@extends('layouts.app')
+
+@section('titulo', $hero->name . ' — Marvel Hub')
+
+@section('contenido')
+    <a href="{{ route('heroes.index') }}" class="back-link">&larr; Volver al listado</a>
+
+    <div class="hero-detail">
+        <h1>{{ $hero->name }}</h1>
+
+        <div class="info-row">
+            <span class="label">Nombre real</span>
+            <span class="value">{{ $hero->real_name }}</span>
+        </div>
+
+        <div class="info-row">
+            <span class="label">Poder</span>
+            <span class="value">{{ $hero->power }}</span>
+        </div>
+
+        <div class="info-row">
+            <span class="label">Nivel de poder</span>
+            <span class="value">{{ $hero->power_level }}</span>
+        </div>
+
+        <div class="info-row">
+            <span class="label">Equipo</span>
+            <span class="value">{{ $hero->team }}</span>
+        </div>
+
+        <div class="info-row">
+            <span class="label">Biografía</span>
+            <span class="value">{{ $hero->bio }}</span>
+        </div>
+
+        <div class="info-row">
+            <span class="label">Estado</span>
+            <span class="value">
+                @if($hero->is_active)
+                    Activo
+                @else
+                    Inactivo
+                @endif
+            </span>
+        </div>
+
+        <div class="detail-actions">
+            <a href="{{ route('heroes.edit', $hero->id) }}" class="btn-edit">Editar héroe</a>
+        </div>
+    </div>
+@endsection
+```
 
 ---
 
-## Paso 3: Crear la vista del formulario
+## Parte 2: Eliminar un héroe
 
-Antes de crear la vista, hay que añadir los estilos del formulario a `public/css/heroes.css`. Los formularios tienen sus propias clases para mantener coherencia visual con el resto del proyecto:
+### Paso 2.1: Añadir la ruta de eliminación
+
+```php
+Route::delete('/heroes/{id}', [HeroController::class, 'destroy'])->name('heroes.destroy');
+```
+
+El archivo `web.php` definitivo con todas las rutas del proyecto:
+
+```php
+Route::get('/heroes', [HeroController::class, 'index'])->name('heroes.index');
+Route::get('/heroes/create', [HeroController::class, 'create'])->name('heroes.create');
+Route::get('/heroes/active', [HeroController::class, 'active'])->name('heroes.active');
+Route::get('/heroes/powerful', [HeroController::class, 'powerful'])->name('heroes.powerful');
+Route::get('/heroes/{id}/edit', [HeroController::class, 'edit'])->name('heroes.edit');
+Route::get('/heroes/{id}', [HeroController::class, 'show'])->name('heroes.show');
+Route::post('/heroes', [HeroController::class, 'store'])->name('heroes.store');
+Route::put('/heroes/{id}', [HeroController::class, 'update'])->name('heroes.update');
+Route::delete('/heroes/{id}', [HeroController::class, 'destroy'])->name('heroes.destroy');
+```
+
+### Paso 2.2: El método destroy()
+
+```php
+public function destroy($id)
+{
+    $hero = Hero::findOrFail($id);
+    $hero->delete();
+
+    return redirect()->route('heroes.index')
+        ->with('success', 'Héroe eliminado correctamente.');
+}
+```
+
+Se busca el héroe con `findOrFail()` antes de eliminarlo. Esto garantiza que si alguien intenta eliminar un ID que no existe, Laravel devuelve un 404 en lugar de un error inesperado.
+
+### Paso 2.3: El botón de eliminar en la vista de detalle
+
+Eliminar requiere enviar una petición `DELETE`. Como los formularios HTML no soportan ese método, se usa el mismo mecanismo que en la edición: un formulario `POST` con `@method('DELETE')`.
+
+Antes de actualizar la vista, añade los estilos necesarios en `public/css/heroes.css`:
 
 ```css
 /* ========================================
-   FORMULARIOS
+   ACCIONES DE DETALLE
    ======================================== */
-.form-card {
-    background-color: #ffffff;
-    padding: 40px;
-    border-radius: 10px;
-    border-top: 5px solid #e23636;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    max-width: 700px;
-    margin: 30px auto;
-}
-
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    font-weight: 700;
-    color: #1a1a1a;
-    margin-bottom: 6px;
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.form-group input[type="text"],
-.form-group input[type="number"],
-.form-group textarea {
-    width: 100%;
-    padding: 10px 14px;
-    border: 2px solid #e0e0e0;
-    border-radius: 5px;
-    font-size: 1rem;
-    font-family: inherit;
-    color: #1a1a1a;
-    transition: border-color 0.3s;
-}
-
-.form-group input:focus,
-.form-group textarea:focus {
-    outline: none;
-    border-color: #e23636;
-}
-
-.form-group textarea {
-    min-height: 100px;
-    resize: vertical;
-}
-
-.form-error {
-    display: block;
-    color: #e23636;
-    font-size: 0.85rem;
-    margin-top: 5px;
-    font-weight: 600;
-}
-
-.form-checkbox {
+.detail-actions {
     display: flex;
+    gap: 12px;
+    margin-top: 30px;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 25px;
 }
 
-.form-checkbox input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    accent-color: #e23636;
-}
-
-.form-checkbox label {
-    font-weight: 600;
-    color: #1a1a1a;
-}
-
-.btn-submit {
+.btn-edit {
     display: inline-block;
-    padding: 12px 30px;
+    padding: 10px 24px;
+    background-color: #1a1a1a;
+    color: #ffffff;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: 700;
+    transition: all 0.3s ease;
+}
+
+.btn-edit:hover {
+    background-color: #333333;
+    transform: translateY(-2px);
+}
+
+.btn-delete {
+    display: inline-block;
+    padding: 10px 24px;
     background-color: #e23636;
     color: #ffffff;
     border: none;
@@ -327,189 +381,85 @@ Antes de crear la vista, hay que añadir los estilos del formulario a `public/cs
     transition: all 0.3s ease;
 }
 
-.btn-submit:hover {
-    background-color: #c42e2e;
-    transform: translateY(-2px);
-}
-
-.btn-new {
-    display: inline-block;
-    padding: 10px 24px;
-    background-color: #e23636;
-    color: #ffffff;
-    text-decoration: none;
-    border-radius: 5px;
-    font-weight: 700;
-    margin-bottom: 20px;
-    transition: all 0.3s ease;
-}
-
-.btn-new:hover {
+.btn-delete:hover {
     background-color: #c42e2e;
     transform: translateY(-2px);
 }
 ```
 
-Con los estilos añadidos, la vista queda así:
+La vista `show.blade.php` actualizada con ambas acciones:
 
 ```html
-{{-- resources/views/heroes/create.blade.php --}}
+{{-- resources/views/heroes/show.blade.php --}}
 @extends('layouts.app')
 
-@section('titulo', 'Nuevo Héroe — Marvel Hub')
+@section('titulo', $hero->name . ' — Marvel Hub')
 
 @section('contenido')
     <a href="{{ route('heroes.index') }}" class="back-link">&larr; Volver al listado</a>
 
-    <div class="form-card">
-        <h1>Nuevo Héroe</h1>
+    <div class="hero-detail">
+        <h1>{{ $hero->name }}</h1>
 
-        <form action="{{ route('heroes.store') }}" method="POST">
-            @csrf
+        <div class="info-row">
+            <span class="label">Nombre real</span>
+            <span class="value">{{ $hero->real_name }}</span>
+        </div>
 
-            <div class="form-group">
-                <label for="name">Nombre</label>
-                <input type="text" id="name" name="name" value="{{ old('name') }}">
-                @error('name')
-                    <span class="form-error">{{ $message }}</span>
-                @enderror
-            </div>
+        <div class="info-row">
+            <span class="label">Poder</span>
+            <span class="value">{{ $hero->power }}</span>
+        </div>
 
-            <div class="form-group">
-                <label for="real_name">Nombre real</label>
-                <input type="text" id="real_name" name="real_name" value="{{ old('real_name') }}">
-                @error('real_name')
-                    <span class="form-error">{{ $message }}</span>
-                @enderror
-            </div>
+        <div class="info-row">
+            <span class="label">Nivel de poder</span>
+            <span class="value">{{ $hero->power_level }}</span>
+        </div>
 
-            <div class="form-group">
-                <label for="power">Poder</label>
-                <input type="text" id="power" name="power" value="{{ old('power') }}">
-                @error('power')
-                    <span class="form-error">{{ $message }}</span>
-                @enderror
-            </div>
+        <div class="info-row">
+            <span class="label">Equipo</span>
+            <span class="value">{{ $hero->team }}</span>
+        </div>
 
-            <div class="form-group">
-                <label for="power_level">Nivel de poder</label>
-                <input type="number" id="power_level" name="power_level" min="1" max="10000" value="{{ old('power_level') }}">
-                @error('power_level')
-                    <span class="form-error">{{ $message }}</span>
-                @enderror
-            </div>
+        <div class="info-row">
+            <span class="label">Biografía</span>
+            <span class="value">{{ $hero->bio }}</span>
+        </div>
 
-            <div class="form-group">
-                <label for="team">Equipo</label>
-                <input type="text" id="team" name="team" value="{{ old('team') }}">
-                @error('team')
-                    <span class="form-error">{{ $message }}</span>
-                @enderror
-            </div>
+        <div class="info-row">
+            <span class="label">Estado</span>
+            <span class="value">
+                @if($hero->is_active)
+                    Activo
+                @else
+                    Inactivo
+                @endif
+            </span>
+        </div>
 
-            <div class="form-group">
-                <label for="bio">Biografía</label>
-                <textarea id="bio" name="bio">{{ old('bio') }}</textarea>
-                @error('bio')
-                    <span class="form-error">{{ $message }}</span>
-                @enderror
-            </div>
+        <div class="detail-actions">
+            <a href="{{ route('heroes.edit', $hero->id) }}" class="btn-edit">Editar héroe</a>
 
-            <div class="form-checkbox">
-                <input type="checkbox" id="is_active" name="is_active" value="1" {{ old('is_active') ? 'checked' : '' }}>
-                <label for="is_active">Activo</label>
-            </div>
-
-            <button type="submit" class="btn-submit">Guardar héroe</button>
-        </form>
+            <form action="{{ route('heroes.destroy', $hero->id) }}" method="POST">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn-delete"
+                    onclick="return confirm('¿Seguro que quieres eliminar a {{ $hero->name }}?')">
+                    Eliminar héroe
+                </button>
+            </form>
+        </div>
     </div>
 @endsection
 ```
 
-### Análisis de la vista
+**Por qué se usa `confirm()`**
 
-**`.form-card` y `.form-group`**
-
-`.form-card` envuelve el formulario y le da la misma estructura visual que `.hero-detail` en la vista de detalle: fondo blanco, borde superior rojo y sombra. `.form-group` agrupa cada campo con su etiqueta y su posible mensaje de error, manteniendo el espaciado uniforme entre campos.
-
-**`action="{{ route('heroes.store') }}"`**
-
-El atributo `action` indica la URL a la que se enviarán los datos al pulsar el botón. Se usa `route()` en lugar de una URL estática por la misma razón que en la navegación: si la ruta cambia, el formulario se actualiza solo.
-
-**`method="POST"`**
-
-Indica a HTML que los datos viajen en el cuerpo de la petición, no en la URL.
-
-**`@csrf`**
-
-Inserta el campo oculto con el token de seguridad. Sin esta línea, Laravel rechazará la petición con error 419.
-
-**`value="{{ old('name') }}"`**
-
-`old('name')` recupera el valor que el usuario había introducido en ese campo antes de que la validación fallara. Si el formulario se envía, la validación rechaza un campo y el usuario vuelve al formulario, encontrará los campos rellenos con los valores que ya había escrito, no un formulario vacío. Si el formulario se abre por primera vez, `old()` devuelve `null` y el campo aparece vacío.
-
-**`@error('name') ... @enderror`**
-
-Esta directiva comprueba si existe un error de validación para el campo `name`. Si existe, ejecuta el bloque y dentro pone a disposición la variable `$message` con el texto del error. El `<span class="form-error">` lo muestra en rojo bajo el campo. Si no existe ningún error para ese campo, el bloque se ignora completamente.
-
-**`.form-checkbox` y `.btn-submit`**
-
-`.form-checkbox` alinea horizontalmente el checkbox con su etiqueta. `.btn-submit` aplica al botón de envío el mismo estilo rojo que los botones de acción del resto del proyecto.
+El atributo `onclick="return confirm(...)"` muestra un diálogo nativo del navegador antes de enviar el formulario. Si el usuario pulsa Cancelar, `confirm()` devuelve `false`, el evento del formulario se cancela y la petición DELETE no se envía. Es la forma más directa de proteger una acción destructiva sin necesitar JavaScript adicional.
 
 ---
 
-## Paso 4: Enlazar el formulario desde el listado
-
-Para que el usuario pueda acceder al formulario, añade un enlace en `index.blade.php`:
-
-```html
-{{-- resources/views/heroes/index.blade.php --}}
-@extends('layouts.app')
-
-@section('titulo', 'Héroes — Marvel Hub')
-
-@section('contenido')
-    <h1>Héroes</h1>
-
-    <a href="{{ route('heroes.create') }}" class="btn-new">+ Nuevo héroe</a>
-
-    @foreach($heroes as $hero)
-        @include('partials.hero-card')
-    @endforeach
-@endsection
-```
-
----
-
-## Paso 5: Mostrar un mensaje tras guardar
-
-Es buena práctica informar al usuario de que la operación se completó correctamente. Laravel permite pasar mensajes a través de la redirección usando `with()`:
-
-```php
-// En el controlador, al redirigir:
-return redirect()->route('heroes.index')->with('success', 'Héroe creado correctamente.');
-```
-
-El mensaje viaja en la sesión y está disponible en la siguiente petición a través de la variable `session()`. En el layout, añade un bloque para mostrarlo cuando exista:
-
-```html
-{{-- En resources/views/layouts/app.blade.php, dentro de <main> --}}
-<main>
-    @if(session('success'))
-        <div class="alert">
-            {{ session('success') }}
-        </div>
-    @endif
-
-    @yield('contenido')
-</main>
-```
-
-Al colocarlo en el layout, cualquier redirección con `->with('success', '...')` mostrará automáticamente el mensaje en todas las páginas, sin necesitar añadir el bloque en cada vista.
-
----
-
-## El controlador completo hasta esta fase
+## El controlador completo
 
 ```php
 <?php
@@ -554,13 +504,57 @@ class HeroController extends Controller
             'is_active'   => $request->boolean('is_active'),
         ]);
 
-        return redirect()->route('heroes.index')->with('success', 'Héroe creado correctamente.');
+        return redirect()->route('heroes.index')
+            ->with('success', 'Héroe creado correctamente.');
     }
 
     public function show($id)
     {
         $hero = Hero::findOrFail($id);
         return view('heroes.show', compact('hero'));
+    }
+
+    public function edit($id)
+    {
+        $hero = Hero::findOrFail($id);
+        return view('heroes.edit', compact('hero'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $hero = Hero::findOrFail($id);
+
+        $request->validate([
+            'name'        => 'required|string|max:100',
+            'real_name'   => 'nullable|string|max:100',
+            'power'       => 'required|string|max:150',
+            'power_level' => 'required|integer|min:1|max:10000',
+            'team'        => 'required|string|max:100',
+            'bio'         => 'nullable|string',
+            'is_active'   => 'boolean',
+        ]);
+
+        $hero->update([
+            'name'        => $request->name,
+            'real_name'   => $request->real_name,
+            'power'       => $request->power,
+            'power_level' => $request->power_level,
+            'team'        => $request->team,
+            'bio'         => $request->bio,
+            'is_active'   => $request->boolean('is_active'),
+        ]);
+
+        return redirect()->route('heroes.show', $hero->id)
+            ->with('success', 'Héroe actualizado correctamente.');
+    }
+
+    public function destroy($id)
+    {
+        $hero = Hero::findOrFail($id);
+        $hero->delete();
+
+        return redirect()->route('heroes.index')
+            ->with('success', 'Héroe eliminado correctamente.');
     }
 
     public function active()
@@ -587,86 +581,99 @@ class HeroController extends Controller
 
 ---
 
+## Resumen del ciclo CRUD completo
+
+| Operación | Método HTTP | Ruta | Método controlador | Vista |
+|-----------|-------------|------|--------------------|-------|
+| Listar | GET | `/heroes` | `index()` | `heroes/index` |
+| Ver detalle | GET | `/heroes/{id}` | `show()` | `heroes/show` |
+| Formulario crear | GET | `/heroes/create` | `create()` | `heroes/create` |
+| Guardar nuevo | POST | `/heroes` | `store()` | — (redirige) |
+| Formulario editar | GET | `/heroes/{id}/edit` | `edit()` | `heroes/edit` |
+| Guardar cambios | PUT | `/heroes/{id}` | `update()` | — (redirige) |
+| Eliminar | DELETE | `/heroes/{id}` | `destroy()` | — (redirige) |
+
+---
+
 ## Ejercicio Práctico: Plataforma de Música
 
-Añade la funcionalidad de crear nuevos álbumes al ejercicio de la Fase 5.
+Completa el CRUD del ejercicio de música añadiendo edición y eliminación de álbumes.
 
 ### Requisitos
 
-1. Formulario accesible desde el listado principal
-2. Campos: título, artista, año, género, número de canciones, valoración, disponible
-3. Validaciones:
-   - `titulo`, `artista`, `genero`: obligatorios, texto, máximo 150 caracteres
-   - `año`: obligatorio, entero, entre 1900 y el año actual
-   - `canciones`: obligatorio, entero, mínimo 1
-   - `valoracion`: obligatorio, numérico, entre 0 y 10
-   - `disponible`: booleano
-4. Si la validación falla, el formulario muestra los errores y conserva los valores introducidos
-5. Si la validación pasa, guarda el álbum y redirige al listado con mensaje de confirmación
+1. Formulario de edición accesible desde la ficha de detalle de cada álbum
+2. Los campos del formulario de edición muestran los datos actuales del álbum
+3. Si la validación falla, los campos conservan los valores que el usuario había modificado
+4. Tras actualizar, redirige a la ficha de detalle con mensaje de confirmación
+5. Botón de eliminar en la ficha de detalle con confirmación antes de ejecutar
+6. Tras eliminar, redirige al listado con mensaje de confirmación
 
 ### Tareas a realizar
 
-**Tarea 1:** Añade las dos rutas necesarias a `web.php` en el orden correcto.
+**Tarea 1:** Añade las rutas `GET /albumes/{id}/edit`, `PUT /albumes/{id}` y `DELETE /albumes/{id}` a `web.php` respetando el orden correcto.
 
-**Tarea 2:** Añade los métodos `create()` y `store()` a `AlbumController`.
+**Tarea 2:** Añade los métodos `edit()`, `update()` y `destroy()` a `AlbumController`. Las validaciones de `update()` deben ser las mismas que las de `store()`.
 
-**Tarea 3:** Crea la vista `resources/views/albumes/create.blade.php` con el formulario, `@csrf`, `old()` en cada campo y `@error` para los mensajes.
+**Tarea 3:** Crea la vista `resources/views/albumes/edit.blade.php` con los campos precargados usando `old('campo', $album->campo)` y `@method('PUT')`.
 
-**Tarea 4:** Añade el enlace al formulario desde la vista `index.blade.php`.
+**Tarea 4:** Actualiza la vista `show.blade.php` de álbumes con el enlace a editar y el formulario de eliminar con `@method('DELETE')` y confirmación.
 
-**Tarea 5:** Añade el bloque de mensaje de éxito en el layout.
+**Tarea 5:** Añade a `heroes.css` los estilos `.detail-actions`, `.btn-edit` y `.btn-delete`.
 
 ---
 
 ## Pistas y recordatorios
 
-### Sobre la regla `numeric` para decimales
-
-```php
-'valoracion' => 'required|numeric|min:0|max:10',
-```
-
-Para campos decimales usa `numeric` en lugar de `integer`. `integer` rechazaría valores como `9.2`.
-
-### Sobre el año máximo dinámico
-
-```php
-'año' => 'required|integer|min:1900|max:' . date('Y'),
-```
-
-`date('Y')` devuelve el año actual en PHP, de modo que la regla siempre valida hasta el año en curso sin necesitar actualizar el código.
-
-### Sobre la estructura del formulario
+### Sobre old() con valor por defecto en la edición
 
 ```html
-<form action="{{ route('albumes.store') }}" method="POST">
+<input type="text" name="titulo" value="{{ old('titulo', $album->titulo) }}">
+```
+
+### Sobre @method en el formulario de edición
+
+```html
+<form action="{{ route('albumes.update', $album->id) }}" method="POST">
     @csrf
-
-    <div>
-        <label for="titulo">Título</label>
-        <input type="text" id="titulo" name="titulo" value="{{ old('titulo') }}">
-        @error('titulo')
-            <span>{{ $message }}</span>
-        @enderror
-    </div>
-
-    {{-- resto de campos --}}
-
-    <button type="submit">Guardar álbum</button>
+    @method('PUT')
+    {{-- campos --}}
+    <button type="submit" class="btn-submit">Guardar cambios</button>
 </form>
+```
+
+### Sobre el formulario de eliminar
+
+```html
+<form action="{{ route('albumes.destroy', $album->id) }}" method="POST">
+    @csrf
+    @method('DELETE')
+    <button type="submit" class="btn-delete"
+        onclick="return confirm('¿Seguro que quieres eliminar este álbum?')">
+        Eliminar álbum
+    </button>
+</form>
+```
+
+### Sobre la redirección tras actualizar
+
+```php
+return redirect()->route('albumes.show', $album->id)
+    ->with('success', 'Álbum actualizado correctamente.');
 ```
 
 ---
 
 ## Verificación
 
-- [ ] Ruta `GET /albumes/create` definida antes de `GET /albumes/{id}`
-- [ ] Ruta `POST /albumes` definida
-- [ ] Método `create()` devuelve la vista del formulario
-- [ ] Método `store()` valida antes de guardar
-- [ ] El formulario incluye `@csrf`
-- [ ] Cada campo usa `old()` para recuperar el valor previo
-- [ ] Cada campo tiene su bloque `@error`
-- [ ] Si la validación falla, el formulario muestra los errores con los campos rellenos
-- [ ] Si la validación pasa, el álbum aparece en el listado
-- [ ] Tras guardar se muestra un mensaje de confirmación
+- [ ] Ruta `GET /albumes/{id}/edit` definida antes de `GET /albumes/{id}`
+- [ ] Rutas `PUT /albumes/{id}` y `DELETE /albumes/{id}` definidas
+- [ ] Método `edit()` busca el álbum con `findOrFail()` y devuelve la vista
+- [ ] Método `update()` valida antes de actualizar
+- [ ] Método `destroy()` busca el álbum con `findOrFail()` antes de eliminar
+- [ ] El formulario de edición incluye `@method('PUT')`
+- [ ] Los campos del formulario de edición usan `old('campo', $album->campo)`
+- [ ] Si la validación falla en edición, los campos conservan los valores modificados
+- [ ] El formulario de eliminar incluye `@method('DELETE')` y `confirm()`
+- [ ] Tras actualizar redirige a la ficha de detalle con mensaje de éxito
+- [ ] Tras eliminar redirige al listado con mensaje de éxito
+- [ ] El CRUD completo funciona: crear, leer, actualizar y eliminar
