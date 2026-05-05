@@ -256,3 +256,116 @@ main {
         padding: 12px 20px;
     }
 }
+
+
+/* ========================================
+   FORMULARIOS
+   ======================================== */
+.form-card {
+    background-color: #ffffff;
+    padding: 40px;
+    border-radius: 10px;
+    border-top: 5px solid #e23636;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    max-width: 700px;
+    margin: 30px auto;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 2px solid #e0e0e0;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-family: inherit;
+    color: #1a1a1a;
+    transition: border-color 0.3s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #e23636;
+}
+
+.form-group textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.form-error {
+    display: block;
+    color: #e23636;
+    font-size: 0.85rem;
+    margin-top: 5px;
+    font-weight: 600;
+}
+
+.form-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 25px;
+}
+
+.form-checkbox input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #e23636;
+}
+
+.form-checkbox label {
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.btn-submit {
+    display: inline-block;
+    padding: 12px 30px;
+    background-color: #e23636;
+    color: #ffffff;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-submit:hover {
+    background-color: #c42e2e;
+    transform: translateY(-2px);
+}
+
+.btn-new {
+    display: inline-block;
+    padding: 10px 24px;
+    background-color: #e23636;
+    color: #ffffff;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+}
+
+.btn-new:hover {
+    background-color: #c42e2e;
+    transform: translateY(-2px);
+}

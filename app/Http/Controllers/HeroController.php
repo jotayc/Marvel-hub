@@ -25,6 +25,41 @@ class HeroController extends Controller
         return view('heroes.index', compact('heroes'));
     }
 
+    public function create()
+    {
+        return view('heroes.create');
+    }
+
+    public function store(Request $request)
+    {
+
+    // Validamos los datos del formulario para asegurarnos de que cumplen con los requisitos antes de guardarlos en la base de datos.
+    // Aquí estamos utilizando el método validate() del objeto Request para definir las reglas de validación para cada campo del formulario.
+    // En caso de que los datos no cumplan con las reglas, Laravel redirigirá automáticamente al usuario de vuelta al formulario
+    //con los errores de validación. Se puede acceder a través de la variable $errors en la vista para mostrar los mensajes de error correspondientes.
+        $request->validate([
+            'name'        => 'required|string|max:100',
+            'real_name'   => 'nullable|string|max:100',
+            'power'       => 'required|string|max:150',
+            'power_level' => 'required|integer|min:1|max:10000',
+            'team'        => 'required|string|max:100',
+            'bio'         => 'nullable|string',
+            'is_active'   => 'boolean',
+        ]);
+
+        Hero::create([
+            'name'        => $request->name,
+            'real_name'   => $request->real_name,
+            'power'       => $request->power,
+            'power_level' => $request->power_level,
+            'team'        => $request->team,
+            'bio'         => $request->bio,
+            'is_active'   => $request->boolean('is_active'),
+        ]);
+
+        return redirect()->route('heroes.index')->with('success', 'Héroe creado correctamente.');
+    }
+
 
     public function show($id)
     {

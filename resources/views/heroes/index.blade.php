@@ -9,6 +9,8 @@
 @section('contenido')
     <h1>Héroes</h1>
 
+    <a href="{{ route('heroes.create') }}" class="btn-new">+ Nuevo héroe</a>
+
     @foreach($heroes as $hero)
         <div class="hero-card">
             <h2>{{ $hero->name }}</h2>
