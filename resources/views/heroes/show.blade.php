@@ -1,3 +1,4 @@
+{{-- resources/views/heroes/show.blade.php --}}
 @extends('layouts.app')
 
 @section('titulo', $hero->name . ' — Marvel Hub')
@@ -42,6 +43,18 @@
                     Inactivo
                 @endif
             </span>
+        </div>
+
+        <div class="detail-actions">
+            <a href="{{ route('heroes.edit', $hero->id) }}" class="btn-edit">Editar héroe</a>
+
+            <form action="{{ route('heroes.destroy', $hero->id) }}" method="POST">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn-delete" onclick="return confirm('¿Seguro que quieres eliminar a {{ $hero->name }}?')">
+                    Eliminar héroe
+                </button>
+            </form>
         </div>
     </div>
 @endsection

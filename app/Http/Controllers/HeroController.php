@@ -33,10 +33,10 @@ class HeroController extends Controller
     public function store(Request $request)
     {
 
-    // Validamos los datos del formulario para asegurarnos de que cumplen con los requisitos antes de guardarlos en la base de datos.
-    // Aquí estamos utilizando el método validate() del objeto Request para definir las reglas de validación para cada campo del formulario.
-    // En caso de que los datos no cumplan con las reglas, Laravel redirigirá automáticamente al usuario de vuelta al formulario
-    //con los errores de validación. Se puede acceder a través de la variable $errors en la vista para mostrar los mensajes de error correspondientes.
+        // Validamos los datos del formulario para asegurarnos de que cumplen con los requisitos antes de guardarlos en la base de datos.
+        // Aquí estamos utilizando el método validate() del objeto Request para definir las reglas de validación para cada campo del formulario.
+        // En caso de que los datos no cumplan con las reglas, Laravel redirigirá automáticamente al usuario de vuelta al formulario
+        //con los errores de validación. Se puede acceder a través de la variable $errors en la vista para mostrar los mensajes de error correspondientes.
         $request->validate([
             'name'        => 'required|string|max:100',
             'real_name'   => 'nullable|string|max:100',
@@ -93,5 +93,66 @@ class HeroController extends Controller
         // Aquí también reutilizamos la vista index para mostrar
         //los héroes más poderosos.
         return view('heroes.index', compact('heroes'));
+    }
+
+    // La función edit() se encarga de mostrar el formulario de
+    //edición para un héroe específico. Recibe el ID del héroe como parámetro,
+    //busca el héroe en la base de datos utilizando el modelo Hero y
+    //luego pasa los datos del héroe a la vista edit.blade.php para que
+    //se puedan mostrar en el formulario de edición.
+    public function edit($id)
+    {
+        $hero = Hero::findOrFail($id);
+        return view('heroes.edit', compact('hero'));
+    }
+
+
+    // La función update() se encarga de procesar los datos enviados desde
+    //el formulario de edición para actualizar un héroe específico en la base de datos.
+    //Recibe el objeto Request con los datos del formulario y el ID del héroe a actualizar
+    // como parámetros. Primero valida los datos del formulario, luego encuentra el héroe
+    //en la base de datos utilizando el modelo Hero, actualiza sus atributos con los nuevos
+    //valores y finalmente guarda los cambios en la base de datos. Después de actualizar
+    //el héroe, redirige al usuario a la página de detalles del héroe actualizado con un
+    //mensaje de éxito.
+    public function update(Request $request, $id)
+    {
+        $hero = Hero::findOrFail($id);
+
+        $request->validate([
+            'name'        => 'required|string|max:100',
+            'real_name'   => 'nullable|string|max:100',
+            'power'       => 'required|string|max:150',
+            'power_level' => 'required|integer|min:1|max:10000',
+            'team'        => 'required|string|max:100',
+            'bio'         => 'nullable|string',
+            'is_active'   => 'boolean',
+        ]);
+
+        $hero->update([
+            'name'        => $request->name,
+            'real_name'   => $request->real_name,
+            'power'       => $request->power,
+            'power_level' => $request->power_level,
+            'team'        => $request->team,
+            'bio'         => $request->bio,
+            'is_active'   => $request->boolean('is_active'),
+        ]);
+
+        return redirect()->route('heroes.show', $hero->id)
+            ->with('success', 'Héroe actualizado correctamente.');
+    }
+
+    // La función destroy() se encarga de eliminar un héroe específico de la base de datos.
+    //Recibe el ID del héroe a eliminar como parámetro, encuentra el héroe
+    //en la base de datos utilizando el modelo Hero, lo elimina y luego redirige
+    //al usuario a la página de lista de héroes con un mensaje de éxito.
+    public function destroy($id)
+    {
+        $hero = Hero::findOrFail($id);
+        $hero->delete();
+
+        return redirect()->route('heroes.index')
+            ->with('success', 'Héroe eliminado correctamente.');
     }
 }

@@ -19,6 +19,7 @@ Route::get('/heroes/active', [HeroController::class, 'active'])->name('heroes.ac
 Route::get('/heroes/powerful', [HeroController::class, 'powerful'])->name('heroes.powerful');
 Route::get('/heroes/create', [HeroController::class, 'create'])->name('heroes.create');
 Route::get('/heroes/{id}', [HeroController::class, 'show'])->name('heroes.show');
+Route::get('/heroes/{id}/edit', [HeroController::class, 'edit'])->name('heroes.edit');
 
 // La ruta para almacenar un nuevo héroe utilizando el método POST,
 //que se corresponde con la función store del controlador.
@@ -26,3 +27,8 @@ Route::get('/heroes/{id}', [HeroController::class, 'show'])->name('heroes.show')
 //ya que ambas rutas comparten el mismo URI base (/heroes) pero utilizan diferentes métodos HTTP
 // (GET para mostrar el formulario y POST para procesar el formulario).
 Route::post('/heroes', [HeroController::class, 'store'])->name('heroes.store');
+
+// Las rutas para actualizar y eliminar un héroe utilizando los métodos PUT y DELETE respectivamente,
+// que se corresponden con las funciones update y destroy del controlador.
+Route::put('/heroes/{id}', [HeroController::class, 'update'])->name('heroes.update');
+Route::delete('/heroes/{id}', [HeroController::class, 'destroy'])->name('heroes.destroy');
