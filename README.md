@@ -1,769 +1,741 @@
-# Fase 0: Introducción al Ecosistema Laravel
-
-> **Tiempo estimado:** 2-3 sesiones (3-4.5 horas)  
-> **Objetivo:** Comprender el ecosistema PHP moderno y configurar el entorno de desarrollo
+# FASE 0: Instalación y Configuración
 
 ---
 
-## 🎯 Objetivos de Aprendizaje
+## ¿Qué es Laravel?
 
-Al finalizar esta fase serás capaz de:
+Laravel es un **framework de PHP** diseñado para facilitar el desarrollo de aplicaciones web. Un framework es un conjunto de herramientas y estructuras predefinidas que permite construir aplicaciones de forma más rápida, organizada y segura.
 
-1. ✅ Entender qué es Laravel y por qué es el framework PHP más popular
-2. ✅ Comprender el ecosistema PHP moderno (Composer, PSR, dependencias)
-3. ✅ Instalar y configurar Laravel en Windows correctamente
-4. ✅ Comprender la estructura de directorios de un proyecto Laravel
-5. ✅ Usar Artisan (CLI de Laravel) para tareas comunes
-6. ✅ Crear el proyecto base "Marvel Universe Hub"
+### ¿Por qué usar Laravel en lugar de PHP puro?
 
----
-
-## 📚 Parte 1: ¿Qué es Laravel y Por Qué Aprenderlo?
-
-### 1.1 Laravel en el Ecosistema Web
-
-**Laravel** es un framework MVC de PHP creado por Taylor Otwell en 2011. Es el framework PHP más popular del mundo según encuestas de Stack Overflow, GitHub stars y descargas de Packagist.
-
-#### Comparación conceptual con Java/Android
-
-| Concepto | Java/Android | Laravel/PHP |
-|----------|--------------|-------------|
-| **Framework web** | Spring Boot, Spark | **Laravel** |
-| **Gestor de dependencias** | Maven, Gradle | **Composer** |
-| **ORM** | Hibernate, Room | **Eloquent** |
-| **Repositorio central** | Maven Central | **Packagist** |
-| **CLI de proyecto** | `gradle`, `mvn` | **`artisan`** |
-| **Servidor embebido** | Tomcat, Jetty | **Artisan serve** |
-
-### 1.2 ¿Por Qué Laravel?
-
-**Razones profesionales:**
-- 🏆 Framework PHP más demandado en ofertas de empleo (2024)
-- 📦 Ecosistema maduro con miles de paquetes
-- 🚀 Curva de aprendizaje progresiva (vs Symfony)
-- 📖 Documentación excelente y comunidad activa
-- 🎯 Equilibrio entre "magia" y control
-
-**Razones didácticas (para FP):**
-- ✨ Sintaxis elegante y expresiva (fácil de leer)
-- 🧰 Herramientas CLI que aceleran el desarrollo
-- 🎨 Blade: motor de plantillas muy intuitivo
-- 🗄️ Eloquent: ORM que "se entiende solo"
-- 📚 Conceptos extrapolables a otros frameworks (MVC, ORM, routing)
-
-### 1.3 Laravel 11: La Versión a Usar en Este Plan
-
-Laravel 11 es la versión **LTS (Long Term Support)** lanzada en marzo 2024, con soporte hasta 2026 (bugs) y 2027 (seguridad).
-
-**Novedades destacadas:**
-- Estructura de directorios más simple
-- Configuración reducida (menos archivos)
-- Mejor rendimiento
-- PHP 8.2+ obligatorio (compatible con PHP 8.3)
-
-> ⚠️ **IMPORTANTE:** Laravel 12 salió en enero 2025 y es muy reciente. Para aprender, usaremos **Laravel 11** que es más estable, tiene mejor documentación y es lo que encontrarás en empresas actualmente.
-
-> 💡 **Sobre tu PHP 8.3:** Perfecto, PHP 8.3 es totalmente compatible con Laravel 11 (requiere mínimo PHP 8.2).
-
----
-
-## 📚 Parte 2: Ecosistema PHP Moderno
-
-### 2.1 Composer: El Gestor de Dependencias
-
-**Composer** es para PHP lo que Maven/Gradle es para Java.
-
-**Conceptos clave:**
-
-```json
-{
-    "require": {
-        "laravel/framework": "^11.0"
-    }
-}
-```
-
-**Comparación con Gradle (Android):**
-
-```groovy
-// build.gradle (Android)
-dependencies {
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-}
-```
-
-```json
-// composer.json (Laravel)
-{
-    "require": {
-        "laravel/framework": "^11.0"
-    }
-}
-```
-
-**Comandos básicos de Composer:**
-
-```bash
-composer install        # Equivale a: gradle build
-composer update         # Actualiza dependencias
-composer require vendor/package  # Añade nueva dependencia
-composer dump-autoload  # Regenera autoload (como gradle clean)
-```
-
-### 2.2 PSR: Estándares PHP
-
-**PSR (PHP Standard Recommendations)** son estándares de la comunidad PHP.
-
-Los más importantes:
-- **PSR-4:** Autoloading de clases (similar a package en Java)
-- **PSR-12:** Estilo de código (como Google Java Style Guide)
-- **PSR-7:** HTTP messages
-
-**Ejemplo comparativo:**
-
-```java
-// Java: package define la estructura
-package com.marvel.heroes;
-
-public class Hero {
-    // ...
-}
-```
-
+**PHP puro:**
 ```php
+// Archivo: heroes.php
 <?php
-// PHP PSR-4: namespace define la estructura
-namespace App\Models;
+$conexion = mysqli_connect("localhost", "root", "root", "marvel_hub");
+$resultado = mysqli_query($conexion, "SELECT * FROM heroes");
 
-class Hero {
-    // ...
+while($hero = mysqli_fetch_assoc($resultado)) {
+    echo "<h2>" . $hero['name'] . "</h2>";
+    echo "<p>" . $hero['power'] . "</p>";
+}
+mysqli_close($conexion);
+?>
+```
+
+**Con Laravel:**
+```php
+// Archivo: HeroController.php
+public function index()
+{
+    $heroes = Hero::all();
+    return view('heroes.index', ['heroes' => $heroes]);
 }
 ```
 
-### 2.3 Packagist: El Repositorio Central
-
-**Packagist** (https://packagist.org) es el Maven Central de PHP.
-
-Ejemplos de paquetes populares:
-- `laravel/framework` - El propio Laravel
-- `guzzlehttp/guzzle` - Cliente HTTP (como OkHttp/Retrofit)
-- `intervention/image` - Manipulación de imágenes
-- `barryvdh/laravel-debugbar` - Debug toolbar
+**Ventajas de Laravel:**
+- ✅ Código más limpio y organizado
+- ✅ Seguridad integrada (protección contra SQL injection, CSRF, XSS)
+- ✅ Sistema de rutas profesional
+- ✅ ORM (Eloquent) para trabajar con bases de datos
+- ✅ Sistema de plantillas (Blade)
+- ✅ Validación de datos incorporada
+- ✅ Gran comunidad y documentación
 
 ---
 
-## 💻 Parte 3: Instalación y Configuración en Windows
+## Arquitectura MVC
 
-### 3.1 Requisitos Previos
+Laravel utiliza el patrón **MVC (Model-View-Controller)**, que separa la aplicación en tres capas:
 
-**Software necesario:**
-1. ✅ **PHP 8.2+** (PHP 8.3 recomendado) con extensiones (openssl, pdo, mbstring, tokenizer, xml, ctype, json)
-2. ✅ **Composer** (gestor de dependencias)
-3. ✅ **MySQL** (base de datos) - Incluido en MAMP Pro, XAMPP o Laragon
-4. ✅ **VS Code** + extensiones PHP (recomendado)
-5. ⚠️ **Git** (control de versiones)
+**Flujo completo del patrón MVC:**
 
-> 💡 **Nota:** En este plan usaremos **MySQL** en lugar de SQLite porque es más realista para producción y es lo que encontrarás en empresas. MAMP Pro, XAMPP y Laragon incluyen MySQL.
+1. **Usuario → Rutas:** El navegador solicita `GET /heroes`
 
-### 3.2 Instalación Paso a Paso
+2. **Rutas → Controller:** La ruta dirige la petición al método `index()` de `HeroController`
 
-#### Opción A: Laragon (Recomendada para Windows) ✅
+3. **Controller → Model:** El controlador solicita datos al modelo: `Hero::all()`
 
-**Laragon** es un entorno AMP (Apache, MySQL, PHP) portable para Windows. Es la forma MÁS SIMPLE de tener todo configurado.
+4. **Model → Base de Datos:** El modelo ejecuta: `SELECT * FROM heroes`
 
-**Ventajas de Laragon:**
-- ✨ Instalación todo-en-uno (Apache, MySQL, PHP, Composer)
-- 🚀 Configuración automática del PATH
-- 🔄 Cambiar versiones de PHP con un clic
-- 🌐 Virtual hosts automáticos (marvel-hub.test)
-- 📦 Terminal integrada con cmder
-- 🎯 Diseñado específicamente para Laravel
+5. **Base de Datos → Model:** La BD retorna los registros encontrados
 
-1. **Descargar Laragon Full:**
-   - Ir a https://laragon.org/download/
-   - Descargar "Laragon Full" (incluye Apache, MySQL, PHP, Composer)
+6. **Model → Controller:** El modelo devuelve los datos al controlador
 
-2. **Instalar:**
-   - Ejecutar el instalador
-   - Ruta recomendada: `C:\laragon`
-   - Marcar: "Añadir Laragon al PATH"
+7. **Controller → View:** El controlador pasa los datos a la vista: `view('heroes.index', ['heroes' => $datos])`
 
-3. **Verificar instalación:**
-   ```bash
-   php -v        # Debe mostrar PHP 8.2+ o 8.3
-   composer -V   # Debe mostrar Composer 2.x
-   ```
+8. **View → Usuario:** La vista genera el HTML final y el controlador lo envía como respuesta HTTP al navegador
 
-4. **Iniciar servicios:**
-   - Clic derecho en icono de Laragon → Start All
-   - O desde la ventana principal → "Start All"
+### Explicación de cada capa:
 
-#### Opción B: XAMPP + Composer
+**Model (Modelo):**
+- Representa una tabla de la base de datos
+- Maneja toda la lógica de datos
+- Ejemplo: `Hero.php` → tabla `heroes`
 
-Si prefieres XAMPP (más conocido):
+**View (Vista):**
+- Archivos que contienen HTML, CSS y código Blade
+- Solo se encargan de mostrar información
+- Ejemplo: `heroes/index.blade.php`
 
-1. Instalar XAMPP (https://www.apachefriends.org/)
-2. Instalar Composer por separado (https://getcomposer.org/)
-3. Añadir PHP al PATH de Windows
-4. Credenciales MySQL: `root` con contraseña vacía (como Laragon)
+**Controller (Controlador):**
+- Intermediario entre Model y View
+- Contiene la lógica de negocio
+- Ejemplo: `HeroController.php`
 
-> 💡 **Recomendación didáctica:** Usa **Laragon** (Opción A) para aprender. Es menos problemático que configurar XAMPP manualmente y tus alumnos agradecerán no lidiar con configuraciones de PATH.
+---
 
-### 3.3 Verificación del Entorno
+## Requisitos Previos
 
+Antes de instalar Laravel, necesitas tener instalado:
+
+### 1. PHP >= 8.2
+
+**Para este curso usaremos PHP 8.2**, que es la versión incluida en XAMPP y compatible con Laravel 11.
+
+Verificar versión de PHP:
 ```bash
-# Verifica versiones
 php -v
-# PHP 8.2.x o 8.3.x (ambas versiones son compatibles con Laravel 11)
-
-composer -V
-# Composer version 2.x.x
-
-# Verifica extensiones PHP necesarias
-php -m | grep pdo
-php -m | grep mbstring
-php -m | grep openssl
 ```
 
-> ✅ **PHP 8.3:** Si tienes PHP 8.3, perfecto. Laravel 11 es compatible con PHP 8.2, 8.3 y superiores. PHP 8.3 es incluso mejor para rendimiento.
+Deberías ver algo como:
+```
+PHP 8.2.x (cli) ...
+```
 
-> 💡 **Tip de Laragon:** Para abrir la terminal integrada, clic derecho en el icono de Laragon → Terminal. Esto abre cmder con todas las rutas ya configuradas.
+**Nota:** Laravel 11 requiere PHP 8.2 o superior. XAMPP incluye PHP 8.2 por lo que no necesitas instalar nada adicional.
 
-### 3.4 Servidor de Desarrollo: artisan serve vs Apache
+### 2. Composer
 
-**Laragon incluye Apache**, pero para aprender Laravel es mejor usar el servidor de desarrollo integrado:
+Composer es el gestor de dependencias de PHP (similar a npm en JavaScript).
 
-**Durante este curso usaremos: `php artisan serve`**
-- ✅ URL simple: `http://127.0.0.1:8000`
-- ✅ No requiere configurar Virtual Hosts
-- ✅ Fácil de reiniciar si cambias `.env`
-- ✅ Es la forma estándar en Laravel
+**Verificar instalación:**
+```bash
+composer --version
+```
 
-**Apache de Laragon lo usarás después para:**
-- Múltiples proyectos simultáneos
-- URLs bonitas (marvel-hub.test)
-- Configuraciones avanzadas
+**Si no lo tienes, descárgalo de:** https://getcomposer.org/
 
-> 💡 **No necesitas iniciar Apache** de Laragon para este curso, solo asegúrate de que **MySQL esté corriendo**.
+### 3. Servidor web + MySQL
+
+En este curso usaremos **XAMPP**, que incluye:
+- Apache (servidor web)
+- MariaDB (base de datos compatible con MySQL)
+- PHP
+
+**Configuración en XAMPP:**
+- Apache corriendo en puerto 80
+- MySQL/MariaDB corriendo en puerto 3306
 
 ---
 
-## 🚀 Parte 4: Creando el Primer Proyecto Laravel
+## Instalación de Laravel
 
-### 4.1 Crear Proyecto con Composer
+### ¿Qué es Composer?
 
-**Comando para instalar Laravel 11 (NO Laravel 12):**
+Antes de instalar Laravel, es fundamental entender qué es **Composer** y por qué lo necesitamos.
+
+**Composer** es un **gestor de dependencias para PHP**. Permite descargar, instalar y gestionar automáticamente las librerías de terceros que tu proyecto necesita.
+
+**Analogía:** Imagina que estás construyando una casa. En lugar de fabricar tú mismo cada ladrillo, cada tubo y cada ventana, Composer es como un proveedor especializado que te trae todos esos materiales ya hechos, verifica que sean compatibles entre sí, y los coloca organizadamente en tu proyecto.
+
+**¿Qué son las dependencias?**
+
+Las dependencias son paquetes de código creados por otros desarrolladores que tu proyecto utiliza. Por ejemplo:
+- Laravel necesita un paquete para manejar rutas
+- Laravel necesita un paquete para conectarse a bases de datos
+- Laravel necesita un paquete para enviar emails
+- Y docenas más...
+
+Composer se encarga de:
+1. Descargar todos estos paquetes
+2. Verificar que las versiones sean compatibles
+3. Mantenerlos actualizados
+4. Gestionarlos en el archivo `composer.json`
+
+**Ejemplo visual:**
+
+```
+Tu Proyecto (marvel-hub)
+│
+├── Laravel Framework ────┐
+│                         │
+│   Composer descarga:    │
+│   ├── Paquete de rutas  │
+│   ├── Paquete de BD     │
+│   ├── Paquete de vistas │
+│   └── +50 paquetes más  │
+│                         │
+└─────────────────────────┘
+```
+
+Sin Composer tendrías que:
+1. Buscar cada paquete manualmente
+2. Descargarlo uno por uno
+3. Verificar versiones compatibles (pesadilla)
+4. Configurar cada uno manualmente
+
+Con Composer:
 ```bash
-# Navega a tu carpeta de proyectos
-cd C:\laragon\www
+composer create-project laravel/laravel marvel-hub
+```
+Y listo. Todo se descarga y configura automáticamente.
 
-# Crea el proyecto Laravel 11 específicamente
-composer create-project laravel/laravel marvel-hub "^11.0"
+### Configurar PATH de Windows (Importante)
 
-# Entra en el proyecto
+Para que el sistema use el PHP de XAMPP, necesitas configurar las **Variables de Entorno**.
+
+**¿Por qué es necesario?**
+
+Si tienes otras instalaciones de PHP, Windows puede usar la incorrecta. Debemos asegurarnos que use la de XAMPP.
+
+**Pasos:**
+
+1. Presiona **Windows + R**, escribe `sysdm.cpl` y presiona Enter
+2. Ve a la pestaña **"Opciones avanzadas"**
+3. Clic en **"Variables de entorno"**
+4. En **"Variables del sistema"** (sección inferior), busca `Path`
+5. Selecciona `Path` y clic en **"Editar"**
+6. Verifica si hay rutas de otras instalaciones PHP (Laragon, MAMP, etc.)
+7. Si existen, **elimínalas** (selecciona y clic en "Eliminar")
+8. Clic en **"Nuevo"** y agrega:
+   ```
+   C:\xampp\php
+   ```
+9. Usa el botón **"Subir"** para mover esta ruta **arriba de todo**
+10. Clic en **"Aceptar"** en todas las ventanas
+11. **Reinicia Windows** para que los cambios surtan efecto
+
+**Verificar configuración:**
+
+Después de reiniciar, abre una **nueva terminal** y ejecuta:
+
+```bash
+php -v
+```
+
+Debe mostrar:
+```
+PHP 8.2.x (cli) ... (ZTS Visual C++ 2022 x64)
+```
+
+Y la ruta debe ser de XAMPP:
+```bash
+where php
+```
+
+Debe mostrar:
+```
+C:\xampp\php\php.exe
+```
+
+Si aparece otra ruta (Laragon, MAMP), repite los pasos de configuración del PATH.
+
+### Paso 1: Crear el proyecto
+
+Abre la terminal y navega a la carpeta donde quieres crear el proyecto:
+
+```bash
+cd C:\xampp\htdocs
+```
+
+Crea el proyecto Laravel con Composer:
+
+```bash
+composer create-project laravel/laravel:^11.0 marvel-hub
+```
+
+**Nota:** El `:^11.0` especifica que queremos Laravel 11 (versión estable LTS). Si omites esta parte, Composer instalará la versión más reciente, que puede ser inestable.
+
+Este comando:
+1. Descarga Laravel 11 y todas sus dependencias (unos 50-60 paquetes)
+2. Crea la carpeta `marvel-hub` con toda la estructura
+3. Configura el proyecto automáticamente
+4. Genera la clave de cifrado (`APP_KEY`)
+
+
+### Paso 2: Acceder al proyecto
+
+```bash
 cd marvel-hub
 ```
 
-> ⚠️ **IMPORTANTE:** El sufijo `"^11.0"` indica a Composer que instale Laravel 11.x (no 12). Sin este parámetro, instalaría Laravel 12 que es demasiado reciente para este curso.
+---
 
-**Verificar la versión instalada:**
-```bash
-php artisan --version
-# Debe mostrar: Laravel Framework 11.x.x
+## Estructura de Carpetas
+
+Laravel tiene una estructura predefinida. Estas son las carpetas más importantes:
+
+```
+marvel-hub/
+├── app/
+│   ├── Http/
+│   │   └── Controllers/     ← Controladores (lógica)
+│   └── Models/              ← Modelos (representan tablas BD)
+│
+├── config/                  ← Archivos de configuración
+│
+├── database/
+│   ├── migrations/          ← Definiciones de tablas (no lo usaremos)
+│   └── seeders/             ← Datos de prueba (no lo usaremos)
+│
+├── public/                  ← Archivos públicos (CSS, JS, imágenes)
+│   └── index.php            ← Punto de entrada de la aplicación
+│
+├── resources/
+│   └── views/               ← Vistas (archivos Blade)
+│
+├── routes/
+│   └── web.php              ← Definición de rutas web
+│
+├── storage/                 ← Archivos generados (logs, caché)
+│
+├── .env                     ← Variables de entorno (configuración)
+├── artisan                  ← Herramienta CLI de Laravel
+└── composer.json            ← Dependencias del proyecto
 ```
 
-> 🔍 **Comparación con Android:** Es similar a crear un proyecto nuevo en Android Studio usando Gradle, pero desde CLI. El `"^11.0"` es como especificar `compileSdkVersion` o versiones de dependencias en `build.gradle`.
+### Carpetas que usaremos frecuentemente:
 
-**Lo que acaba de pasar:**
-1. Composer descargó Laravel 11 y todas sus dependencias (puede tardar 2-3 minutos)
-2. Se creó la estructura completa de directorios
-3. Se generó una clave de aplicación (APP_KEY en .env)
-4. Se instalaron todos los paquetes necesarios
+| Carpeta | Uso |
+|---------|-----|
+| `app/Http/Controllers/` | Crear controladores |
+| `app/Models/` | Crear modelos |
+| `resources/views/` | Crear vistas (HTML + Blade) |
+| `routes/web.php` | Definir rutas de la aplicación |
+| `public/css/` | Archivos CSS (si los necesitamos) |
 
-### 4.2 Arrancar el Servidor de Desarrollo
+---
+
+## Configuración Inicial
+
+### Archivo .env
+
+El archivo `.env` contiene la configuración específica de tu entorno (desarrollo, producción, etc.).
+
+**Ubicación:** `marvel-hub/.env`
+
+Abre el archivo con un editor de texto y localiza estas variables:
+
+```env
+APP_NAME=Laravel
+APP_ENV=local
+APP_KEY=base64:...generada automáticamente...
+APP_DEBUG=true
+APP_URL=http://localhost
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=marvel_hub
+DB_USERNAME=root
+DB_PASSWORD=root
+```
+
+### Variables importantes:
+
+**APP_NAME:**
+- Nombre de tu aplicación
+- Cámbialo a: `APP_NAME="Marvel Hub"`
+
+**APP_KEY:**
+- Clave de cifrado única
+- **Ya viene generada automáticamente**
+- Si por alguna razón está vacía, ejecuta: `php artisan key:generate`
+
+**APP_DEBUG:**
+- En desarrollo: `true` (muestra errores detallados)
+- En producción: `false` (oculta errores al usuario)
+
+**APP_URL:**
+- URL base de tu aplicación
+- Si usas el servidor integrado de Laravel: `http://localhost:8000`
+- Si usas XAMPP con virtual host: `http://marvel-hub.test`
+- Si usas XAMPP sin virtual host: `http://localhost/marvel-hub/public`
+
+**Variables de Base de Datos:**
+- `DB_DATABASE`: Nombre de la base de datos que crearemos
+- `DB_USERNAME`: Usuario de MySQL (por defecto `root` en XAMPP)
+- `DB_PASSWORD`: Contraseña de MySQL (por defecto vacía en XAMPP)
+
+### Configuración actualizada:
+
+```env
+APP_NAME="Marvel Hub"
+APP_ENV=local
+APP_KEY=base64:...
+APP_DEBUG=true
+APP_URL=http://localhost:8000
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=marvel_hub
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+**Guarda el archivo.**
+
+### Configuración adicional para XAMPP (Importante)
+
+Si usas XAMPP con MariaDB, necesitas configurar la collation correcta para evitar errores.
+
+**Problema común:**
+```
+SQLSTATE[HY000]: General error: 1273 Unknown collation: 'utf8mb4_0900_ai_ci'
+```
+
+**Causa:** Laravel 11 usa por defecto `utf8mb4_0900_ai_ci` (MySQL 8.0+), pero XAMPP incluye MariaDB que no soporta esa collation.
+
+**Solución:** Añade estas líneas al final de tu archivo `.env`:
+
+```env
+DB_COLLATION=utf8mb4_unicode_ci
+DB_CHARSET=utf8mb4
+```
+
+**Tu .env completo debería verse así:**
+
+```env
+APP_NAME="Marvel Hub"
+APP_ENV=local
+APP_KEY=base64:...
+APP_DEBUG=true
+APP_URL=http://localhost:8000
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=marvel_hub
+DB_USERNAME=root
+DB_PASSWORD=
+DB_COLLATION=utf8mb4_unicode_ci
+```
+
+**Luego limpia la caché de configuración:**
 
 ```bash
-# Dentro de la carpeta marvel-hub
+php artisan config:clear
+```
+
+**Nota:** Si recibes este error más adelante al usar Tinker, esta es la solución.
+
+---
+
+## Base de Datos
+
+### Paso 1: Crear la base de datos
+
+Accede a **phpMyAdmin**:
+- URL: http://localhost/phpmyadmin
+- Usuario: `root`
+- Contraseña: `root`
+
+1. Haz clic en **"Nueva"** en el panel izquierdo
+2. Nombre de la base de datos: `marvel_hub`
+3. Cotejamiento: `utf8mb4_unicode_ci`
+4. Clic en **"Crear"**
+
+### Paso 2: Crear la tabla heroes
+
+Selecciona la base de datos `marvel_hub` y ve a la pestaña **SQL**.
+
+Copia y ejecuta este script:
+
+```sql
+CREATE TABLE heroes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    real_name VARCHAR(100),
+    power VARCHAR(255),
+    power_level INT DEFAULT 0,
+    team VARCHAR(100),
+    bio TEXT,
+    is_active TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+### Estructura de la tabla:
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `id` | INT | Identificador único (autoincremental) |
+| `name` | VARCHAR(100) | Nombre del héroe (obligatorio) |
+| `real_name` | VARCHAR(100) | Identidad real (opcional) |
+| `power` | VARCHAR(255) | Descripción del poder |
+| `power_level` | INT | Nivel de poder (0-10000) |
+| `team` | VARCHAR(100) | Equipo al que pertenece |
+| `bio` | TEXT | Biografía del héroe |
+| `is_active` | TINYINT(1) | Si está activo (1) o no (0) |
+| `created_at` | TIMESTAMP | Fecha de creación |
+| `updated_at` | TIMESTAMP | Fecha de última actualización |
+
+### Paso 3: Insertar datos de ejemplo
+
+Ejecuta este script en la pestaña SQL:
+
+```sql
+INSERT INTO heroes (name, real_name, power, power_level, team, bio, is_active) VALUES
+('Iron Man', 'Tony Stark', 'Tecnología avanzada', 8500, 'Vengadores', 'Genio, multimillonario, playboy, filántropo', 1),
+('Thor', 'Thor Odinson', 'Dios del Trueno', 9000, 'Vengadores', 'Príncipe de Asgard y portador de Mjolnir', 1),
+('Spider-Man', 'Peter Parker', 'Sentido arácnido', 7000, 'Vengadores', 'Amigable vecino de Nueva York', 1),
+('Doctor Strange', 'Stephen Strange', 'Hechicería', 9000, 'Vengadores', 'Hechicero Supremo y guardián de la Gema del Tiempo', 1),
+('Black Widow', 'Natasha Romanoff', 'Espía experta', 6500, 'Vengadores', 'Agente de alto nivel de S.H.I.E.L.D.', 1);
+```
+
+**Verifica los datos:**
+
+Ejecuta en SQL:
+```sql
+SELECT * FROM heroes;
+```
+
+Deberías ver los 5 héroes insertados.
+
+---
+
+## Verificar Conexión a la Base de Datos
+
+### ¿Qué es Artisan?
+
+Laravel incluye una herramienta de línea de comandos llamada **Artisan** que facilita muchas tareas comunes de desarrollo.
+
+**Artisan** es una CLI (Command Line Interface - Interfaz de Línea de Comandos) que viene con Laravel y permite ejecutar comandos para:
+- Generar archivos (controladores, modelos, etc.)
+- Gestionar la base de datos
+- Limpiar cachés
+- Iniciar el servidor de desarrollo
+- Y mucho más...
+
+**Analogía:** Es como tener un asistente que te ayuda con tareas repetitivas. En lugar de crear archivos manualmente, Artisan los genera con la estructura correcta.
+
+**Estructura de un comando Artisan:**
+
+```bash
+php artisan <nombre-comando> <argumentos> <opciones>
+```
+
+Por ejemplo:
+```bash
+php artisan serve          # Inicia servidor de desarrollo
+php artisan list           # Muestra todos los comandos disponibles
+php artisan make:controller HeroController  # Genera un controlador
+```
+
+**¿Por qué se escribe `php artisan`?**
+- `php`: Ejecuta el intérprete de PHP
+- `artisan`: Es un archivo PHP en la raíz del proyecto que contiene toda la lógica de comandos
+
+### ¿Qué es Tinker?
+
+**Tinker** es un comando de Artisan que abre una consola interactiva (REPL) donde puedes ejecutar código PHP con todo Laravel cargado.
+
+REPL significa: **R**ead-**E**val-**P**rint-**L**oop (Leer-Evaluar-Imprimir-Repetir)
+
+**¿Para qué sirve Tinker?**
+- Probar código PHP rápidamente sin crear archivos
+- Interactuar con la base de datos
+- Probar modelos y consultas
+- Verificar configuraciones
+
+**Analogía:** Es como tener un "laboratorio de experimentos" donde puedes probar cosas en tiempo real sin afectar tu código.
+
+### Probar la conexión con Tinker:
+
+Ejecuta este comando desde la carpeta del proyecto:
+
+```bash
+php artisan tinker
+```
+
+Verás algo como:
+```
+Psy Shell v0.x.x (PHP 8.2.x — cli)
+>>>
+```
+
+El símbolo `>>>` indica que Tinker está esperando que escribas código PHP.
+
+Dentro de Tinker, ejecuta:
+
+```php
+DB::connection()->getPdo();
+```
+
+**¿Qué hace este comando?**
+- `DB::connection()`: Obtiene la conexión a la base de datos configurada en `.env`
+- `->getPdo()`: Accede al objeto PDO (PHP Data Objects) que gestiona la conexión
+
+Si la conexión es exitosa, verás algo como:
+```
+=> PDO {#4567
+     inTransaction: false,
+     attributes: {
+       ...
+     }
+   }
+```
+
+Si hay error, verás un mensaje indicando el problema:
+- "Access denied": Usuario o contraseña incorrectos en `.env`
+- "Unknown database": La base de datos `marvel_hub` no existe
+- "Connection refused": MySQL no está corriendo en XAMPP (inicia MySQL desde el Control Panel)
+
+**Salir de Tinker:**
+```php
+exit
+```
+
+O presiona `Ctrl + C`
+
+---
+
+## Servidor de Desarrollo
+
+Laravel incluye un servidor de desarrollo integrado que no requiere configurar Apache.
+
+### Iniciar el servidor:
+
+Desde la carpeta del proyecto (`C:\xampp\htdocs\marvel-hub`), ejecuta:
+
+```bash
 php artisan serve
 ```
 
-**Salida esperada:**
+Verás un mensaje como:
 ```
 INFO  Server running on [http://127.0.0.1:8000].
 
 Press Ctrl+C to stop the server
 ```
 
-**Abre el navegador:** http://127.0.0.1:8000
+### Acceder a la aplicación:
 
-Deberías ver la página de bienvenida de Laravel 🎉
+Abre tu navegador y ve a:
+```
+http://localhost:8000
+```
 
-> 💡 **Nota:** `php artisan serve` es como ejecutar un servidor Tomcat embebido en Java, pero mucho más simple.
+Deberías ver la página de bienvenida de Laravel.
+
+### Detener el servidor:
+
+Presiona **Ctrl + C** en la terminal.
 
 ---
 
-## 📁 Parte 5: Estructura de Directorios de Laravel 11
 
-```
-marvel-hub/
-│
-├── app/                    # Lógica de la aplicación (Models, Controllers, etc.)
-│   ├── Http/
-│   │   └── Controllers/    # Controladores (equivalente a Activities en Android)
-│   ├── Models/             # Modelos Eloquent (equivalente a Entities de Room)
-│   └── Providers/          # Service Providers (configuración avanzada)
-│
-├── bootstrap/              # Archivos de inicialización
-│   └── app.php             # Bootstrap de la app
-│
-├── config/                 # Archivos de configuración
-│   ├── app.php             # Configuración general
-│   └── database.php        # Configuración de BD
-│
-├── database/               # Migraciones, factories, seeders
-│   ├── migrations/         # Esquema de BD en PHP (como SQL scripts versionados)
-│   └── seeders/            # Datos de prueba
-│
-├── public/                 # Punto de entrada web (carpeta pública)
-│   └── index.php           # Front Controller (entrada única)
-│
-├── resources/              # Assets y vistas
-│   ├── css/                # CSS (procesado por Vite)
-│   ├── js/                 # JavaScript
-│   └── views/              # Plantillas Blade (equivalente a XML layouts)
-│
-├── routes/                 # Definición de rutas
-│   └── web.php             # Rutas web (las usaremos mucho)
-│
-├── storage/                # Archivos generados (logs, cache, uploads)
-│   ├── app/
-│   ├── framework/
-│   └── logs/
-│
-├── tests/                  # Tests automatizados (PHPUnit)
-│
-├── vendor/                 # Dependencias (como node_modules o build en Android)
-│
-├── .env                    # Variables de entorno (DB, keys, etc.)
-├── artisan                 # CLI de Laravel (como gradlew)
-└── composer.json           # Dependencias (como build.gradle)
-```
-
-### Comparación con Android Studio
-
-| Laravel | Android Studio |
-|---------|----------------|
-| `app/Models/` | `app/src/main/java/.../models/` |
-| `app/Http/Controllers/` | `app/src/main/java/.../` (Activities/Fragments) |
-| `resources/views/` | `app/src/main/res/layout/` |
-| `routes/web.php` | AndroidManifest.xml + Intent Filters |
-| `public/` | `app/src/main/res/` |
-| `storage/` | Caché interna de Android |
-| `.env` | `BuildConfig` o `strings.xml` |
-| `vendor/` | `build/` + dependencias externas |
-
-### Carpetas Clave para Empezar
-
-🎯 **Enfócate en estas 4 carpetas al principio:**
-
-1. **`routes/web.php`** → Aquí defines las URLs de tu app
-2. **`app/Http/Controllers/`** → Lógica de negocio
-3. **`app/Models/`** → Modelos de datos (BD)
-4. **`resources/views/`** → Templates HTML (Blade)
 
 ---
 
-## 🔧 Parte 6: Artisan - La CLI de Laravel
+## Más Comandos Artisan Útiles
 
-**Artisan** es el CLI (Command Line Interface) de Laravel. Es tu mejor amigo para desarrollo.
-
-### 6.1 Comandos Artisan Esenciales
+Ahora que conoces Artisan y Tinker, aquí tienes otros comandos útiles que irás descubriendo:
 
 ```bash
-# Ver lista completa de comandos
+# Ver todos los comandos disponibles
 php artisan list
 
-# Información de la aplicación
-php artisan about
+# Generar clave de aplicación (solo si APP_KEY está vacía)
+php artisan key:generate
 
-# Crear un controlador
-php artisan make:controller HeroController
-
-# Crear un modelo
-php artisan make:model Hero
-
-# Crear una migración
-php artisan make:migration create_heroes_table
-
-# Ejecutar migraciones (crear tablas)
-php artisan migrate
-
-# Limpiar caché
-php artisan cache:clear
+# Limpiar caché de configuración
 php artisan config:clear
+
+# Limpiar caché de rutas
 php artisan route:clear
 
-# Ver rutas registradas
+# Ver todas las rutas definidas
 php artisan route:list
-```
 
-### 6.2 Comparación con Gradle/Android
+# Abrir consola interactiva (Tinker)
+php artisan tinker
 
-```bash
-# Android (Gradle)
-./gradlew build
-./gradlew clean
-./gradlew test
-
-# Laravel (Artisan)
-php artisan serve        # Servidor de desarrollo
-php artisan migrate      # Actualizar BD
-php artisan test         # Ejecutar tests
-```
-
-### 6.3 Ayuda de Comandos
-
-```bash
-# Ayuda de un comando específico
-php artisan help make:controller
-
-# Mostrará todas las opciones y flags disponibles
-```
-
----
-
-## 🦸 Proyecto Marvel: Setup Inicial
-
-### Paso 1: Crear el Proyecto
-
-```bash
-cd C:\laragon\www
-
-# Instalar Laravel 11 específicamente
-composer create-project laravel/laravel marvel-hub "^11.0"
-
-cd marvel-hub
-```
-
-**Verificar que tenemos Laravel 11:**
-```bash
-php artisan --version
-# Salida esperada: Laravel Framework 11.x.x
-```
-
-> ⚠️ **Si instalaste Laravel 12 por error:** Elimina la carpeta `marvel-hub` y vuelve a crear el proyecto con el comando correcto incluyendo `"^11.0"`.
-
-### Paso 2: Configurar Base de Datos (MySQL)
-
-**Crear la base de datos en MySQL:**
-
-1. **Abre phpMyAdmin** (Laragon lo incluye):
-   - Clic derecho en el icono de Laragon en la bandeja del sistema
-   - Menu → MySQL → phpMyAdmin
-   - Se abrirá en el navegador: http://localhost/phpmyadmin
-
-2. **Crear base de datos:**
-   - Clic en "Nueva" o "New" en el panel izquierdo
-   - Nombre: `marvel_hub`
-   - Cotejamiento: `utf8mb4_unicode_ci`
-   - Clic en "Crear"
-
-**Configurar `.env` para MySQL:**
-
-```bash
-# Abre .env con VS Code
-code .env
-```
-
-**Editar estas líneas:**
-
-```env
-# Configuración de MySQL para Laragon
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306               # Puerto por defecto de MySQL
-DB_DATABASE=marvel_hub     # Nombre de la BD que creaste
-DB_USERNAME=root           # Usuario por defecto de Laragon
-DB_PASSWORD=               # Contraseña VACÍA en Laragon (dejar sin valor)
-```
-
-> 💡 **Credenciales de Laragon:** Por defecto es `root` sin contraseña (campo vacío). Esto es diferente a MAMP Pro (root/root) o algunos XAMPP (root/root).
-
-> 🔍 **Comparación con Android:** Esto es equivalente a configurar Room Database en Android, donde defines el nombre y versión de la BD. Aquí defines la conexión en `.env` y Laravel se encarga del resto.
-
-### Paso 3: Verificar Configuración
-
-**Probar conexión a MySQL:**
-
-```bash
-# Dentro de la carpeta marvel-hub
-php artisan db:show
-
-# Si la conexión es correcta, verás información de la BD:
-# MySQL ......................................... 8.x.x
-# Database ...................................... marvel_hub
-# Host .......................................... 127.0.0.1
-# Port .......................................... 3306
-```
-
-> ⚠️ **Si da error:** Revisa que MySQL esté corriendo en MAMP y que las credenciales en `.env` sean correctas. Ejecuta `php artisan config:clear` después de cambiar `.env`.
-
-**Ejecutar migraciones:**
-
-```bash
-# Probar conexión a BD
-php artisan migrate
-
-# Deberías ver:
-# Migration table created successfully.
-# Migrating: 0001_01_01_000000_create_users_table
-# Migrated:  0001_01_01_000000_create_users_table
-# Migrating: 0001_01_01_000001_create_cache_table
-# Migrated:  0001_01_01_000001_create_cache_table
-# Migrating: 0001_01_01_000002_create_jobs_table  
-# Migrated:  0001_01_01_000002_create_jobs_table
-```
-
-**Verificar en phpMyAdmin:**
-- Actualiza phpMyAdmin
-- Verás las tablas creadas: `users`, `cache`, `jobs`, `migrations`, etc.
-
-> 🎉 **¡Éxito!** Laravel creó automáticamente las tablas en MySQL. Esto es el sistema de migraciones que aprenderás en la Fase 5.
-
-### Paso 4: Arrancar Servidor
-
-```bash
+# Iniciar servidor de desarrollo
 php artisan serve
 ```
 
-**Abrir:** http://127.0.0.1:8000
-
-**¡Ya tienes tu primer proyecto Laravel funcionando! 🎉**
+**Nota:** Iremos aprendiendo más comandos de Artisan a medida que avancemos en las fases.
 
 ---
 
-## ⚠️ Errores Comunes y Advertencias Didácticas
+## Resumen de la Fase 0
 
-### Error 0: Se instaló Laravel 12 en lugar de Laravel 11
+### ¿Qué hemos aprendido?
 
-**Problema:** Ejecutaste `composer create-project laravel/laravel marvel-hub` sin especificar versión.
+1. **¿Qué es Laravel?**
+   - Framework de PHP para desarrollo web
+   - Ventajas sobre PHP puro
 
-**Por qué pasa:** Composer instala la última versión disponible (Laravel 12 desde enero 2025).
+2. **Arquitectura MVC**
+   - Model: Datos (tablas de BD)
+   - View: Presentación (HTML)
+   - Controller: Lógica intermedia
 
-**Solución:**
-```bash
-# 1. Elimina el proyecto creado
-rm -rf marvel-hub  # En Linux/Mac
-# O simplemente borra la carpeta en Windows
+3. **Instalación**
+   - Requisitos (PHP, Composer, MySQL)
+   - Crear proyecto con Composer
+   - Estructura de carpetas
 
-# 2. Crea el proyecto con versión específica
-composer create-project laravel/laravel marvel-hub "^11.0"
+4. **Configuración**
+   - Archivo `.env`
+   - Variables importantes
+   - APP_KEY, DB_*
 
-# 3. Verifica la versión
-cd marvel-hub
-php artisan --version
-# Debe mostrar: Laravel Framework 11.x.x
-```
+5. **Base de Datos**
+   - Crear BD en phpMyAdmin
+   - Crear tabla `heroes`
+   - Insertar datos de prueba
 
-**¿Por qué usar Laravel 11 y no 12?**
-- Laravel 11 es LTS (soporte largo plazo)
-- Más documentación y recursos disponibles
-- Es lo que se usa actualmente en empresas
-- Laravel 12 es muy reciente (enero 2025), puede tener bugs
+6. **Servidor**
+   - Apache de XAMPP (`http://localhost/marvel-hub/public`)
+   - `php artisan serve` (alternativa)
+   - Virtual host (alternativa)
 
-### Error 1: "composer: command not found"
+---
 
-**Problema:** Composer no está en el PATH de Windows.
+## Resolución de Problemas Comunes
 
-**Solución:**
-1. Si usas Laragon: Reinicia el terminal después de instalar
-2. Si usas XAMPP: Añade Composer al PATH manualmente
-
-### Error 2: "required extension missing"
-
-**Problema:** Faltan extensiones PHP.
-
-**Solución en Laragon:**
-1. Botón derecho en Laragon → Tools → Quick add → Extensions
-2. Marca: `openssl`, `pdo_mysql`, `mbstring`, `zip`
-3. Reinicia Apache
-
-### Error 3: "Application key not generated"
-
-**Problema:** Falta APP_KEY en `.env`.
+### Error: "No application encryption key has been specified"
 
 **Solución:**
 ```bash
 php artisan key:generate
 ```
 
-### Error 4: "Permission denied" en storage/
-
-**Problema:** Windows no permite escribir en `storage/` o `bootstrap/cache/`.
+### Error: "SQLSTATE[HY000] [1049] Unknown database 'marvel_hub'"
 
 **Solución:**
-- Botón derecho en carpeta → Propiedades → Desmarcar "Solo lectura"
-- O ejecutar terminal como Administrador
+- Verifica que la BD existe en phpMyAdmin
+- Verifica que `DB_DATABASE=marvel_hub` en `.env`
 
-### Error 5: Puerto 8000 ocupado
-
-**Problema:** Otro proceso usa el puerto 8000.
+### Error: "SQLSTATE[HY000] [2002] Connection refused"
 
 **Solución:**
-```bash
-# Usa otro puerto
-php artisan serve --port=8080
-```
+- Asegúrate de que MySQL está corriendo en XAMPP (Panel de control → Start MySQL)
+- Verifica el puerto en `.env` (normalmente 3306)
 
-### Error 6: "SQLSTATE[HY000] [1045] Access denied for user 'root'@'localhost'"
-
-**Problema:** Credenciales de MySQL incorrectas en `.env`.
-
-**Solución para Laragon:**
-1. Verifica las credenciales correctas:
-   - Usuario: `root`
-   - Contraseña: **VACÍA** (dejar el campo sin valor)
-   
-2. Edita `.env`:
-   ```env
-   DB_USERNAME=root
-   DB_PASSWORD=        # ← Dejar VACÍO (sin nada después del =)
-   ```
-
-3. **Limpia la caché de configuración:**
-   ```bash
-   php artisan config:clear
-   ```
-
-> 💡 **Nota:** Laragon usa contraseña vacía por defecto, diferente a MAMP Pro (root/root) o algunos XAMPP.
-
-### Error 7: "SQLSTATE[HY000] [2002] Connection refused"
-
-**Problema:** MySQL no está ejecutándose.
-
-**Solución con Laragon:**
-1. Clic derecho en el icono de Laragon (bandeja del sistema)
-2. Verifica que MySQL esté iniciado:
-   - Si dice "Stop MySQL" → está corriendo ✅
-   - Si dice "Start MySQL" → haz clic para iniciarlo
-3. Alternativamente: Botón "Start All" en la ventana principal de Laragon
-4. Verifica que el puerto sea 3306 en `.env`
-
-### Error 8: "Base de datos 'marvel_hub' no existe"
-
-**Problema:** No creaste la base de datos en MySQL.
+### Error: Página en blanco al acceder a http://localhost:8000
 
 **Solución:**
-1. Abre phpMyAdmin
-2. Crea la base de datos `marvel_hub`
-3. Verifica que `DB_DATABASE=marvel_hub` en `.env`
-4. Ejecuta `php artisan config:clear`
+- Revisa la terminal donde corre `php artisan serve`
+- Busca mensajes de error
+- Ejecuta `php artisan config:clear`
+
+### El CSS o JS no cargan
+
+**Solución:**
+- Los archivos públicos van en `public/`
+- Usa rutas absolutas: `/css/style.css`
+- Verifica que el servidor esté corriendo
 
 ---
 
-## 📝 Conceptos Clave para Recordar
+## Recursos Adicionales
 
-### 1. Composer vs npm
-- **Composer** = dependencias PHP (backend)
-- **npm** = dependencias JavaScript (frontend)
-- Laravel usa AMBOS (Composer para PHP, npm para assets)
-
-### 2. .env: Tu Archivo de Configuración
-- Nunca lo subas a Git (está en `.gitignore`)
-- Contiene credenciales sensibles (DB, API keys)
-- Cada entorno (dev, producción) tiene su propio `.env`
-- **Importante:** Ejecuta `php artisan config:clear` después de cambiar `.env`
-
-### 3. Artisan: Tu Mejor Amigo
-- Generación de código (controllers, models, migrations)
-- Mantenimiento (caché, migraciones)
-- Información (rutas, comandos)
-
-### 4. Vendor: No Tocar
-- Contiene dependencias descargadas
-- Se regenera con `composer install`
-- NUNCA edites archivos en `vendor/`
-
----
-
-## 🎯 Ejercicio Práctico Final
-
-### Ejercicio 1: Exploración de Archivos
-
-1. **Abre `routes/web.php`:**
-   - Observa la ruta `/` (página de bienvenida)
-   - Identifica la función anónima (closure)
-
-2. **Abre `resources/views/welcome.blade.php`:**
-   - Es la vista de bienvenida
-   - Observa la sintaxis HTML mezclada con PHP
-
-3. **Ejecuta comandos Artisan:**
-   ```bash
-   php artisan route:list    # Ver rutas
-   php artisan about         # Info del proyecto
-   ```
-
-### Ejercicio 2: Primera Modificación
-
-**Modifica la página de inicio:**
-
-```php
-// routes/web.php
-Route::get('/', function () {
-    return view('welcome', [
-        'appName' => 'Marvel Universe Hub'
-    ]);
-});
-```
-
-```blade
-<!-- resources/views/welcome.blade.php -->
-<!-- Busca el <title> y cámbialo: -->
-<title>{{ $appName }}</title>
-```
-
-**Refresca el navegador** → Deberías ver "Marvel Universe Hub" en el título de la pestaña.
-
----
-
-## 📚 Recursos Adicionales para Esta Fase
-
-- **Documentación oficial de instalación:** https://laravel.com/docs/11.x/installation
-- **Laracasts "Laravel from Scratch" (primeros videos gratis):** https://laracasts.com/series/laravel-11-for-beginners
-- **PHP: The Right Way:** https://phptherightway.com/ (guía de PHP moderno)
-
----
-
-## ✅ Checklist de Finalización de Fase 0
-
-Marca las tareas completadas:
-
-- [ ] ✅ Instalado PHP 8.2+ o 8.3 y Composer
-- [ ] ✅ Creado proyecto `marvel-hub` con **Laravel 11** (verificado con `php artisan --version`)
-- [ ] ✅ Creado base de datos `marvel_hub` en MySQL
-- [ ] ✅ Configurado `.env` con credenciales de MySQL correctas
-- [ ] ✅ Ejecutado `php artisan migrate` exitosamente
-- [ ] ✅ Servidor funcionando en http://127.0.0.1:8000
-- [ ] ✅ Comprendido la estructura de directorios básica
-- [ ] ✅ Probado al menos 5 comandos de Artisan
-- [ ] ✅ Hecho el ejercicio de modificación de welcome
-
----
-
-## 🚀 Próxima Fase
-
-**Fase 1: Fundamentos de Laravel y Primera Ruta**
-
-En la siguiente fase aprenderás:
-- El patrón MVC en Laravel (comparado con Android)
-- Ciclo de vida de una petición HTTP
-- Crear tu primera ruta personalizada
-- Pasar datos a las vistas
-- Variables de entorno
-
-**Archivo:** `Fase_01_Fundamentos_Laravel.md`
-
----
-
-> 💬 **Reflexión didáctica:** Esta fase es CRÍTICA. Los alumnos que no tienen bien configurado el entorno se frustran rápido. Dedica tiempo en clase a que todos tengan Laravel funcionando antes de avanzar.
+- **Documentación oficial:** https://laravel.com/docs
+- **Laracasts (tutoriales en video):** https://laracasts.com
+- **Laravel News:** https://laravel-news.com
